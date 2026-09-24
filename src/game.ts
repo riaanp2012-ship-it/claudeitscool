@@ -13,6 +13,7 @@ import type {
   Hud,
   InstantActionOptions,
   LessonSummary,
+  MissionSummary,
   MapId,
   MapSummary,
   OrdnanceModelFactory,
@@ -26,6 +27,8 @@ import { Input } from './input/input';
 import { FreeFlightRules } from './modes/freeFlight';
 import { InstantActionRules } from './modes/instantAction';
 import { LESSONS, LessonRules, lessonById } from './modes/training';
+import { MISSIONS, MissionRules, missionById } from './modes/campaign';
+import { SurvivalRules } from './modes/survival';
 import { Session, type ModeRules } from './modes/session';
 import { HangarScene, type HangarFraming } from './render/hangar';
 import { AdaptiveResolution, FrameStats, PerfOverlay } from './render/perf';
@@ -53,7 +56,9 @@ type GameState = 'boot' | 'title' | 'menu' | 'loading' | 'game' | 'paused' | 'de
 type SessionRequest =
   | { kind: 'instant'; options: InstantActionOptions }
   | { kind: 'free'; options: FreeFlightOptions }
-  | { kind: 'lesson'; id: string; options: { map: MapId; aircraft: AircraftId } };
+  | { kind: 'lesson'; id: string; options: { map: MapId; aircraft: AircraftId } }
+  | { kind: 'mission'; id: string; options: { map: MapId; aircraft: AircraftId } }
+  | { kind: 'survival'; options: { map: MapId; aircraft: AircraftId } };
 
 export class Game {
   readonly container: HTMLElement;
@@ -331,9 +336,43 @@ export class Game {
 
   private showCampaign(): void {
     this.hangar.setFraming('setup');
+    const testMode = import.meta.env.MODE === 'test';
+    const missions: MissionSummary[] = MISSIONS.map((m, i) => {
+      const rec = profile.data.missions[m.id];
+      const prevDone = i === 0 || profile.data.missions[MISSIONS[i - 1]!.id]?.completed === true;
+      return {
+        id: m.id,
+        number: m.number,
+        title: m.title,
+        map: m.map,
+        briefing: m.briefing,
+        available: this.modules.isMapAvailable(m.map) && (prevDone || testMode),
+        completed: rec?.completed ?? false,
+        medal: rec?.medal ?? 'none',
+      };
+    });
     this.ui.showCampaign(
-      [],
-      () => undefined,
+      missions,
+      (id) => {
+        const def = missionById(id);
+        if (!def) return;
+        const map = this.mapSummaries().find((x) => x.id === def.map)!;
+        this.ui.showBriefing(
+          `${def.number}. ${def.title.toUpperCase()}`,
+          map,
+          def.briefing,
+          def.objectives,
+          () => {
+            const unlocked = profile.rank >= AIRCRAFT[def.aircraft].unlockRank || testMode;
+            void this.startSession({
+              kind: 'mission',
+              id,
+              options: { map: def.map, aircraft: unlocked ? def.aircraft : this.hangarAircraft },
+            });
+          },
+          () => this.showCampaign(),
+        );
+      },
       () => this.showMenu(),
     );
   }
@@ -363,14 +402,18 @@ export class Game {
     this.state = 'loading';
     this.audio.setMenuMusic(false);
     const lesson = req.kind === 'lesson' ? lessonById(req.id) : undefined;
-    this.ui.showLoading(
-      meta.name.toUpperCase(),
+    const mission = req.kind === 'mission' ? missionById(req.id) : undefined;
+    const subtitle =
       req.kind === 'instant'
         ? 'Instant Action'
         : req.kind === 'free'
           ? 'Free Flight'
-          : `Training · ${lesson?.title ?? ''}`,
-    );
+          : req.kind === 'survival'
+            ? 'Survival'
+            : req.kind === 'lesson'
+              ? `Training · ${lesson?.title ?? ''}`
+              : `Sortie · ${mission?.title ?? ''}`;
+    this.ui.showLoading(meta.name.toUpperCase(), subtitle);
     const g = settings.value.graphics;
     try {
       this.world = await this.modules.createWorld(
@@ -392,12 +435,17 @@ export class Game {
       return;
     }
     const aircraftAvailable = (id: AircraftId) => this.modules.isAircraftAvailable?.(id) ?? true;
-    const rules: ModeRules =
-      req.kind === 'instant'
-        ? new InstantActionRules(req.options, meta.name, aircraftAvailable)
-        : req.kind === 'lesson' && lesson
-          ? new LessonRules(lesson, meta.name)
-          : new FreeFlightRules(req.kind === 'free' ? req.options : { ...this.freeDefaults, map }, meta.name);
+    let rules: ModeRules;
+    if (req.kind === 'instant') rules = new InstantActionRules(req.options, meta.name, aircraftAvailable);
+    else if (req.kind === 'lesson' && lesson) rules = new LessonRules(lesson, meta.name);
+    else if (req.kind === 'mission' && mission)
+      rules = new MissionRules(mission, meta.name, req.options.aircraft);
+    else if (req.kind === 'survival') rules = new SurvivalRules(req.options, meta.name, aircraftAvailable);
+    else
+      rules = new FreeFlightRules(
+        req.kind === 'free' ? req.options : { ...this.freeDefaults, map },
+        meta.name,
+      );
     this.ui.setLoadingProgress(0.88, 'Briefing aircrew');
     const seed = timeSeed();
     rng.seed(seed);

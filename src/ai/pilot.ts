@@ -137,6 +137,8 @@ export class AiPilot {
   readonly slot = new Vector3(-60, 0, 40);
   /** Drone behavior: fly a fixed course (training). */
   droneSpeed = 0;
+  /** Passive aircraft (tankers, strikers) fly their route and only defend themselves. */
+  passive = false;
   /** Wingman order from the player. */
   order: 'engage' | 'attack-target' | 'cover' | 'form' = 'engage';
   orderTarget: Aircraft | null = null;
@@ -203,7 +205,11 @@ export class AiPilot {
     } else {
       this.threat = null;
     }
-    if (this.state === 'defend-missile' && !incoming) this.state = 'engage';
+    if (this.state === 'defend-missile' && !incoming) this.state = this.passive ? 'patrol' : 'engage';
+    if (this.passive) {
+      if (this.state !== 'defend-missile') this.state = 'patrol';
+      return;
+    }
     if (this.state === 'extend') {
       this.extendTimer -= 0.1;
       if (this.extendTimer > 0) return;
