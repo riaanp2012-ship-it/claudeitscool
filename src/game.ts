@@ -210,6 +210,7 @@ export class Game {
       onInstantAction: () => this.showInstantAction(),
       onFreeFlight: () => this.showFreeFlight(),
       onTraining: () => this.showTraining(),
+      onSurvival: () => this.showSurvival(),
       onHangar: () => this.showHangarScreen(),
       onSettings: () => {
         this.hangar.setFraming('setup');
@@ -373,6 +374,24 @@ export class Game {
           () => this.showCampaign(),
         );
       },
+      () => this.showMenu(),
+    );
+  }
+
+  private showSurvival(): void {
+    this.hangar.setFraming('setup');
+    const mapId: MapId = this.modules.isMapAvailable(this.instantDefaults.map)
+      ? this.instantDefaults.map
+      : 'kessel';
+    const map = this.mapSummaries().find((m) => m.id === mapId)!;
+    const best = profile.data.survivalBest;
+    this.ui.showBriefing(
+      'SURVIVAL',
+      map,
+      `Endless waves of bandits, each larger and better than the last. You are repaired and rearmed between waves; there is no respawn.${best > 0 ? ` Your best score is ${best}.` : ''}`,
+      ['Survive as many waves as you can', 'Score multiplies with the wave number'],
+      () =>
+        void this.startSession({ kind: 'survival', options: { map: mapId, aircraft: this.hangarAircraft } }),
       () => this.showMenu(),
     );
   }

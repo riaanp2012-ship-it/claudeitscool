@@ -615,6 +615,64 @@ export const LESSONS: LessonDef[] = [
   },
 ];
 
+/** Lesson 8 is appended separately because it needs ground units. */
+LESSONS.push({
+  id: 'ground-attack',
+  number: 8,
+  title: 'Ground Attack',
+  description: 'Rockets with the CCIP pipper and a laser-guided bomb, while staying out of SAM coverage.',
+  aircraft: 'wyvern',
+  loadout: 'standard',
+  start: 'air',
+  gold: 180,
+  silver: 280,
+  steps: [
+    {
+      say: 'Rockets selected. Dive on the flak site, put the impact pipper on it, fire a salvo, then pull off.',
+      hint: 'Select rockets ({cycleWeapon}), dive and fire ({weapon}) with the pipper on the target',
+      enter: (s, l) => {
+        l.kills = 0;
+        const p = s.player;
+        const kinds = p.weaponKinds();
+        const idx = kinds.indexOf('rocketPod');
+        if (idx >= 0) p.selectedWeapon = idx;
+        const b = p.body;
+        const at = new Vector3(
+          b.position.x + Math.sin(b.heading) * 5000,
+          0,
+          b.position.z - Math.cos(b.heading) * 5000,
+        );
+        at.y = s.world.heightAt(at.x, at.z);
+        s.spawnGround('bunker', 'red', at, 0, 'lesson', 'RANGE TARGET');
+        s.spawnGround(
+          'aaa',
+          'red',
+          at
+            .clone()
+            .add(new Vector3(60, 0, 40))
+            .setY(s.world.heightAt(at.x + 60, at.z + 40)),
+          0,
+          'lesson',
+          'FLAK',
+        );
+        p.target = null;
+      },
+      check: (_s, l) => l.kills >= 1,
+    },
+    {
+      say: 'Now the bomb. Select the laser-guided bomb, designate the bunker and release above one thousand meters.',
+      hint: 'Select LGB ({cycleWeapon}), target the bunker ({lock}) and release ({weapon})',
+      enter: (s, l) => {
+        l.kills = 0;
+        const p = s.player;
+        const idx = p.weaponKinds().indexOf('bomb');
+        if (idx >= 0) p.selectedWeapon = idx;
+      },
+      check: (s, l) => l.kills >= 1 || s.sim.grounds.every((g) => !g.alive),
+    },
+  ],
+});
+
 export function lessonById(id: string): LessonDef | undefined {
   return LESSONS.find((l) => l.id === id);
 }

@@ -549,6 +549,8 @@ export interface MainMenuHandlers {
   onInstantAction(): void;
   onFreeFlight(): void;
   onTraining(): void;
+  /** Endless waves mode. Optional: show a SURVIVAL item only when provided. */
+  onSurvival?(): void;
   onHangar(): void;
   onSettings(): void;
   onCredits(): void;
