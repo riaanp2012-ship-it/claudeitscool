@@ -88,7 +88,7 @@ export function setAtmosphere(p: AtmosphereParams): void {
  *  float atmoTransmittance(vec3 ray)           0..1 fraction of surface color that survives the fog
  *  float atmoGroundShadow(vec3 worldPos)       1 = lit, lower = inside an aircraft shadow
  *  vec3 atmoFlash(vec3 worldPos, vec3 normal)  additive light from active explosion flashes
- *  vec3 atmoDither()                           tiny screen-space noise to break banding
+ *  Banding is handled by dithering at the final 8-bit output (pipeline), not per material.
  */
 export const ATMOSPHERE_GLSL = /* glsl */ `
 uniform vec3 uSunDir;
@@ -168,10 +168,6 @@ vec3 atmoFlash(vec3 worldPos, vec3 normal) {
   return acc;
 }
 
-vec3 atmoDither() {
-  float n = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-  return vec3((n - 0.5) / 255.0);
-}
 `;
 
 /**
@@ -191,10 +187,7 @@ export function patchAtmosphere<T extends Material>(
       .replace('#include <fog_vertex>', 'vAtmoRay = mvPosition.xyz * mat3( viewMatrix );');
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <fog_pars_fragment>', `${ATMOSPHERE_GLSL}\nvarying vec3 vAtmoRay;`)
-      .replace(
-        '#include <fog_fragment>',
-        'gl_FragColor.rgb = atmoApply( gl_FragColor.rgb, vAtmoRay ) + atmoDither();',
-      );
+      .replace('#include <fog_fragment>', 'gl_FragColor.rgb = atmoApply( gl_FragColor.rgb, vAtmoRay );');
     extra?.(shader);
   };
   material.customProgramCacheKey = () => key;

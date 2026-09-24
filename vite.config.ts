@@ -12,4 +12,6 @@ export default defineConfig({
     assetsInlineLimit: 0,
   },
   worker: { format: 'es' },
+  // Pre-bundle heavy deps so the dev server never re-optimizes mid-load (aborted requests in harness shots).
+  optimizeDeps: { include: ['three', 'postprocessing'] },
 });
