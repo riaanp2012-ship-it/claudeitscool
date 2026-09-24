@@ -9,6 +9,12 @@ export class Rng {
   private d: number;
 
   constructor(seed = 1) {
+    this.a = this.b = this.c = this.d = 0;
+    this.seed(seed);
+  }
+
+  /** Re-initializes the stream (sessions reseed the global gameplay stream for reproducibility). */
+  seed(seed: number): void {
     // sfc32 seeded through splitmix32 so small seeds still produce well-mixed state.
     let s = seed >>> 0;
     const next = (): number => {
