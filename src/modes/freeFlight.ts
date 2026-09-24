@@ -24,7 +24,18 @@ export class RingCourse {
   private readonly dimMaterial: MeshStandardMaterial;
   private readonly geometry = new TorusGeometry(RING_RADIUS, 2.2, 10, 64);
 
-  constructor(s: Session, start: Vector3, heading: number, count: number, seed: number) {
+  /**
+   * Random scenic course from `start` (count rings), or explicit ring centers when `points` is given
+   * (each ring faces the direction from the previous point).
+   */
+  constructor(
+    s: Session,
+    start: Vector3,
+    heading: number,
+    count: number,
+    seed: number,
+    points?: readonly Vector3[],
+  ) {
     this.material = patchAtmosphere(
       new MeshStandardMaterial({ color: 0x1a0d05, emissive: new Color(2.4, 0.9, 0.25), roughness: 0.6 }),
       'ring-hot',
@@ -33,6 +44,21 @@ export class RingCourse {
       new MeshStandardMaterial({ color: 0x14100c, emissive: new Color(0.35, 0.18, 0.08), roughness: 0.7 }),
       'ring-dim',
     );
+    if (points) {
+      let prev = start;
+      points.forEach((pt, i) => {
+        const normal = new Vector3().subVectors(pt, prev);
+        normal.y = 0;
+        normal.normalize();
+        const mesh = new Mesh(this.geometry, i === 0 ? this.material : this.dimMaterial);
+        mesh.position.copy(pt);
+        mesh.lookAt(pt.clone().add(normal));
+        s.scene.add(mesh);
+        this.rings.push({ center: pt.clone(), normal, mesh });
+        prev = pt;
+      });
+      return;
+    }
     const r = new Rng(seed);
     const pos = start.clone();
     let hdg = heading;

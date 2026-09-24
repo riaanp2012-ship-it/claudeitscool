@@ -85,6 +85,29 @@ export class LessonRules implements ModeRules {
 
   start(s: Session): void {
     const w = s.world;
+    const rw = w.runways[0];
+    if (this.def.start === 'runway' && rw) {
+      const back = rw.length * 0.42;
+      const pos = new Vector3(
+        rw.center.x - Math.sin(rw.heading) * back,
+        rw.center.y,
+        rw.center.z + Math.cos(rw.heading) * back,
+      );
+      s.spawn({
+        def: AIRCRAFT[this.def.aircraft],
+        team: 'blue',
+        label: 'VIPER 1',
+        isPlayer: true,
+        rule: this.def.loadout,
+        position: pos,
+        heading: rw.heading,
+        speed: 0,
+        onGround: true,
+      });
+      this.startTime = s.time;
+      this.next(s);
+      return;
+    }
     const sp = w.airSpawns.blue[0]!;
     const pos = sp.position.clone();
     pos.y = Math.max(1500, w.surfaceAt(pos.x, pos.z) + 900);
@@ -367,6 +390,70 @@ export const LESSONS: LessonDef[] = [
           if (s.player.body.g >= 5.8) l.counter += dt;
           else l.counter = Math.max(0, l.counter - dt * 0.5);
           return l.counter >= 3;
+        },
+      },
+    ],
+  },
+  {
+    id: 'takeoff-landing',
+    number: 3,
+    title: 'Takeoff and Landing',
+    description: 'Runway takeoff, a ring-marked circuit, gear and flaps, and a full-stop landing.',
+    aircraft: 'kestrel',
+    loadout: 'guns',
+    start: 'runway',
+    gold: 240,
+    silver: 330,
+    steps: [
+      {
+        say: 'Cleared for takeoff. Full power, keep it on the centerline, rotate at two eighty.',
+        hint: 'Full throttle ({throttleUp}), pull up gently above 280 km/h',
+        check: (s) =>
+          !s.player.body.onGround &&
+          s.player.body.position.y - s.world.surfaceAt(s.player.body.position.x, s.player.body.position.z) >
+            40,
+      },
+      {
+        say: 'Positive rate. Gear up.',
+        hint: 'Retract the landing gear ({gear})',
+        check: (s) => s.player.body.gear < 0.05,
+      },
+      {
+        say: 'Fly the circuit through the rings. Keep it smooth, six hundred meters.',
+        hint: 'Fly the circuit rings',
+        enter: (s, l) => {
+          l.course?.dispose();
+          const rw = s.world.runways[0];
+          if (!rw) return;
+          const c = rw.center;
+          const fx = Math.sin(rw.heading);
+          const fz = -Math.cos(rw.heading);
+          const rx = Math.cos(rw.heading);
+          const rz = Math.sin(rw.heading);
+          const at = (along: number, side: number, alt: number) =>
+            new Vector3(c.x + fx * along + rx * side, 0, c.z + fz * along + rz * side).setY(c.y + alt);
+          l.course = new RingCourse(s, s.player.body.position.clone(), 0, 0, 0, [
+            at(4500, 0, 450),
+            at(5500, 3000, 600),
+            at(0, 3500, 600),
+            at(-5500, 2500, 500),
+            at(-6000, 0, 380),
+            at(-3000, 0, 200),
+          ]);
+        },
+        check: (_s, l) => !!l.course && l.course.next >= l.course.rings.length,
+      },
+      {
+        say: 'On final. Gear down, flaps down, power back. Aim for the threshold and flare just before touchdown.',
+        hint: 'Gear ({gear}) and flaps ({flaps}) down, land on the runway and stop (brakes: {airbrake})',
+        check: (s) => {
+          const b = s.player.body;
+          return b.onGround && b.airspeed < 8;
+        },
+        fail: (s) => {
+          const b = s.player.body;
+          if (b.onGround && b.gear < 0.9) return 'Landed with the gear up.';
+          return null;
         },
       },
     ],
