@@ -1,18 +1,27 @@
 # Progress
 
-## Done
-- Phase 0: project scaffold (Vite, strict TS, ESLint, Prettier, Vitest, Playwright), guard script, screenshot tool,
-  frozen module contracts (`src/core/types.ts`), shared atmosphere (`src/render/atmosphere.ts`), aircraft and map data.
+## Done (orchestrator)
+- Phase 0: scaffold, strict tooling, guard, screenshot tool, recurring QA sweep, frozen contracts, shared atmosphere.
+- Flight model with calibrated wave drag (all six jets within 5% of published top speed), G/AoA limiters,
+  stall, ground handling; instructor autopilot (mouse aim and AI virtual stick).
+- Combat: swept bullets, PN missiles (≥ 95% hits on non-maneuvering targets), flares/chaff with timing,
+  notching, rockets, laser-guided bombs, lock-on, RWR; ground units (SAM, AAA, radar, ships, buildings).
+- AI: utility pilots with three skill levels, missile defense, guns defense, extend on stalemate,
+  terrain look-ahead, fairness limits, formation and wingman orders, passive escorts.
+- Modes: Free Flight (ring course, drones), Instant Action, Training (8 lessons), Campaign (9 missions), Survival.
+- Game shell: title → menus → loading (shader warmup) → game ⇄ pause → debrief; profile, XP, ranks, medals;
+  hangar menu scene; perf overlay (F3); adaptive resolution; debug API for tests.
+- Tests: 20 unit tests (flight, guidance, flares, bullets, AI soak at 3 skills, SAM engagement).
 
-## In progress
-- Phase 1 engine core (orchestrator).
-- Parallel workstreams: world, art, fx, audio, HUD, UI.
+## In progress (parallel workers)
+- World (terrain, water, sky, clouds, vegetation, structures, maps), aircraft art, effects, audio, HUD, menus.
+- Reviewer agent auditing the orchestrator code.
 
 ## Next
-- Integrate workstreams into the Free Flight vertical slice.
+- Merge worker branches one at a time with the full gate; wire `src/main.ts`; enable e2e tests; publish a playable build.
 
 ## Known issues
-- None yet.
+- None open in merged code.
 
 ## Performance
-- Not measured yet.
+- Not measured in the integrated game yet (needs world and art).

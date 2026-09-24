@@ -1,27 +1,64 @@
-# claudeitscool
+# SPLASH ONE
 
-## SPLASH ONE: a build prompt for a 3D fighter jet game
+A 3D jet combat game for desktop browsers: dogfights against AI pilots, free flight, a training academy,
+a nine-mission campaign and survival waves, built with three.js and TypeScript.
 
-[`FIGHTER_JET_GAME_PROMPT.md`](FIGHTER_JET_GAME_PROMPT.md) is a complete prompt that tells Claude Code how to build a browser-based 3D jet combat game. The game has dogfights against AI pilots, free flight, a training academy, a campaign, several maps, several jets and a full weapons suite.
+The full design spec lives in [`FIGHTER_JET_GAME_PROMPT.md`](FIGHTER_JET_GAME_PROMPT.md).
 
-### What's in the prompt
+## Play
 
-| Section | Contents |
+You need [Node.js](https://nodejs.org) 20 or newer and a desktop browser with WebGL 2 (Chrome, Edge, Firefox or Safari).
+
+```bash
+npm install
+npm run dev
+```
+
+Open the address it prints (usually `http://localhost:5173`), press any key on the title screen, and pick a mode.
+Click the game view once so the mouse can steer (pointer lock). Press **Esc** to pause.
+
+To make a production build: `npm run build`, then serve the `dist/` folder with any static web server.
+
+## Controls
+
+| Action | Keyboard / mouse | Gamepad |
+|---|---|---|
+| Steer (mouse aim) | Move the mouse | Left stick |
+| Pitch / roll (direct) | S / W, A / D | Left stick |
+| Yaw | Q / E | LB / RB |
+| Throttle up (hold at 100% for afterburner) / down | Shift / X | RT / LT |
+| Guns | Left mouse button | X |
+| Fire selected weapon | Right mouse button or Space | A |
+| Cycle weapon | Tab | D-pad up |
+| Lock / cycle target | T | Y |
+| Look at target (hold) | C | — |
+| Flares / chaff | F / G | B / D-pad down |
+| Change camera (chase / cockpit) | V | View |
+| Free look (hold) | Middle mouse | Right stick |
+| Landing gear / airbrake / flaps | L / B / K | D-pad left / — / D-pad right |
+| Wingmen: attack, cover, engage, form up | 1 – 4 | — |
+| Toggle HUD / performance overlay | H / F3 | — |
+| Pause | Esc or P | Start |
+
+All bindings can be changed in **Settings → Controls**. Keys are bound by physical position, so AZERTY and
+QWERTZ keyboards work too.
+
+## Modes
+
+- **Instant Action**: pick a map, your jet, 1 to 12 bandits, up to 7 wingmen, their skill, weapon rules, respawns and limits.
+- **Free Flight**: fly any map with a timed ring course and optional target drones. Unlimited fuel.
+- **Training**: eight lessons, from basic flight to ground attack, with medals.
+- **Sortie (campaign)**: Operation Low Tide, nine missions across the maps.
+- **Survival**: endless waves that get bigger and better. One aircraft, repaired between waves.
+
+## Development
+
+| Command | What it does |
 |---|---|
-| §1 Non-negotiables | Locked 60 FPS, no flicker, no console errors, no placeholders, a handmade look |
-| §2 Dynamic workflow | A plan → build → verify → critique → re-plan loop. It uses task tracking, memory files that survive between sessions (`CLAUDE.md`, `PROGRESS.md`), parallel subagents with worker and reviewer brief templates, strict automated gates, a screenshot review loop and rules for re-planning |
-| §3–4 Tech and architecture | Vite, strict TypeScript and three.js, a fixed-timestep loop with interpolation, content defined as data, and a debug and test API |
-| §5 Game design | Modes, 6 fictional jets, weapons with real parameters, the flight model, damage, a three-layer AI with skill levels, 5 maps, 8 training lessons, a 9-mission campaign, cameras, controls and audio |
-| §6–7 Art direction | Atmosphere, terrain, water, clouds, effects, and the rules for generating the jets in code |
-| §8–9 UI and the anti-AI look | Design tokens, typography, screens, HUD specification, writing style, settings, accessibility, and a list of generic looks to avoid |
-| §10 Performance contract | Target hardware, per-frame budgets, techniques and the benchmark |
-| §11 **Zero-Defect List** | 157 specific errors that must never appear (flicker, stutter, memory leaks, physics, AI, input, audio, UI, saves, browser issues), each with an ID for QA tracking |
-| §12–15 | Tests, phases with gates, Definition of Done, and how to start |
+| `npm run dev` | Dev server with hot reload |
+| `npm run check` | Typecheck, lint, placeholder guard, unit tests and production build |
+| `npm run e2e` | Browser tests (Playwright); fail on any console error or warning |
+| `npm run bench` | 12-aircraft benchmark with CPU, draw-call and triangle budgets |
+| `bash scripts/qa-sweep.sh` | Runs every gate and prints a summary |
 
-### How to use it
-
-1. Put `FIGHTER_JET_GAME_PROMPT.md` in an empty folder or repo.
-2. Open Claude Code there and send:
-   > Read FIGHTER_JET_GAME_PROMPT.md from top to bottom, then build the game it describes. Start with Phase 0 and keep going phase by phase until the Definition of Done is met.
-3. To continue in a new session:
-   > Resume the build. Read CLAUDE.md and docs/PROGRESS.md first, then continue from the next open task.
+Architecture and module ownership: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). Progress: [`docs/PROGRESS.md`](docs/PROGRESS.md).
