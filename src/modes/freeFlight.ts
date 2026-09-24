@@ -4,7 +4,7 @@ import { Rng } from '../core/rng';
 import type { FreeFlightOptions } from '../core/types';
 import { AIRCRAFT } from '../data/aircraft';
 import { patchAtmosphere } from '../render/atmosphere';
-import type { HudObjective, ModeResult, ModeRules, Session } from './session';
+import { ScoreBox, type HudObjective, type ModeResult, type ModeRules, type Session } from './session';
 
 /**
  * Free Flight (spec §5.1): any map and jet, no enemies. Optional ring course (timed) and slow target drones.
@@ -209,14 +209,19 @@ export class FreeFlightRules implements ModeRules {
     return out;
   }
 
+  private readonly scoreBox = new ScoreBox();
+  private courseLabel = '';
+  private courseLabelNext = -1;
+
   score(s: Session): { left: string; right: string; timer: string } | null {
-    if (!this.course || this.course.startTime < 0) return null;
-    const end = this.course.finishTime >= 0 ? this.course.finishTime : s.time;
-    return {
-      left: 'COURSE',
-      right: `${this.course.next}/${this.course.rings.length}`,
-      timer: fmtTime(end - this.course.startTime),
-    };
+    const c = this.course;
+    if (!c || c.startTime < 0) return null;
+    if (c.next !== this.courseLabelNext) {
+      this.courseLabelNext = c.next;
+      this.courseLabel = `${c.next}/${c.rings.length}`;
+    }
+    const end = c.finishTime >= 0 ? c.finishTime : s.time;
+    return this.scoreBox.set('COURSE', this.courseLabel, end - c.startTime);
   }
 
   result(): ModeResult | null {

@@ -61,6 +61,25 @@ export interface HudObjective {
   failed: boolean;
 }
 
+/** Score strip reused every frame; strings are rebuilt only when the underlying values change. */
+export class ScoreBox {
+  readonly value = { left: '', right: '', timer: '' };
+  private lastLeft = '';
+  private lastRight = '';
+  private lastSeconds = -1;
+
+  set(left: string, right: string, seconds: number): { left: string; right: string; timer: string } {
+    if (left !== this.lastLeft) this.value.left = this.lastLeft = left;
+    if (right !== this.lastRight) this.value.right = this.lastRight = right;
+    const whole = Math.max(0, Math.floor(seconds));
+    if (whole !== this.lastSeconds) {
+      this.lastSeconds = whole;
+      this.value.timer = `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, '0')}`;
+    }
+    return this.value;
+  }
+}
+
 export interface ModeResult {
   outcome: 'success' | 'failure' | 'ended';
   title: string;

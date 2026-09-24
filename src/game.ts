@@ -12,6 +12,7 @@ import type {
   Fx,
   Hud,
   InstantActionOptions,
+  LessonSummary,
   MapId,
   MapSummary,
   OrdnanceModelFactory,
@@ -24,6 +25,7 @@ import { MAP_IDS, MAPS } from './data/maps';
 import { Input } from './input/input';
 import { FreeFlightRules } from './modes/freeFlight';
 import { InstantActionRules } from './modes/instantAction';
+import { LESSONS, LessonRules, lessonById } from './modes/training';
 import { Session, type ModeRules } from './modes/session';
 import { HangarScene, type HangarFraming } from './render/hangar';
 import { AdaptiveResolution, FrameStats, PerfOverlay } from './render/perf';
@@ -49,7 +51,9 @@ export interface GameModules {
 type GameState = 'boot' | 'title' | 'menu' | 'loading' | 'game' | 'paused' | 'debrief';
 
 type SessionRequest =
-  { kind: 'instant'; options: InstantActionOptions } | { kind: 'free'; options: FreeFlightOptions };
+  | { kind: 'instant'; options: InstantActionOptions }
+  | { kind: 'free'; options: FreeFlightOptions }
+  | { kind: 'lesson'; id: string; options: { map: MapId; aircraft: AircraftId } };
 
 export class Game {
   readonly container: HTMLElement;
@@ -280,9 +284,47 @@ export class Game {
 
   private showTraining(): void {
     this.hangar.setFraming('setup');
+    const lessons: LessonSummary[] = [];
+    const titles: Record<number, [string, string]> = {
+      3: ['Takeoff and Landing', 'Runway takeoff, circuit, glide slope approach and a full-stop landing.'],
+      8: [
+        'Ground Attack',
+        'Rockets with the CCIP pipper, laser-guided bombs and staying out of SAM coverage.',
+      ],
+    };
+    for (let n = 1; n <= 8; n++) {
+      const def = LESSONS.find((l) => l.number === n);
+      if (def) {
+        const rec = profile.data.lessons[def.id];
+        lessons.push({
+          id: def.id,
+          number: n,
+          title: def.title,
+          description: def.description,
+          available: true,
+          medal: rec?.medal ?? 'none',
+          bestTime: rec && rec.bestTime > 0 ? rec.bestTime : null,
+        });
+      } else {
+        const [title, description] = titles[n] ?? ['Lesson', ''];
+        lessons.push({
+          id: `lesson-${n}`,
+          number: n,
+          title,
+          description,
+          available: false,
+          medal: 'none',
+          bestTime: null,
+        });
+      }
+    }
     this.ui.showTraining(
-      [],
-      () => undefined,
+      lessons,
+      (id) => {
+        const def = lessonById(id);
+        if (def)
+          void this.startSession({ kind: 'lesson', id, options: { map: 'kessel', aircraft: def.aircraft } });
+      },
       () => this.showMenu(),
     );
   }
@@ -320,7 +362,15 @@ export class Game {
     const meta = MAPS[map];
     this.state = 'loading';
     this.audio.setMenuMusic(false);
-    this.ui.showLoading(meta.name.toUpperCase(), req.kind === 'instant' ? 'Instant Action' : 'Free Flight');
+    const lesson = req.kind === 'lesson' ? lessonById(req.id) : undefined;
+    this.ui.showLoading(
+      meta.name.toUpperCase(),
+      req.kind === 'instant'
+        ? 'Instant Action'
+        : req.kind === 'free'
+          ? 'Free Flight'
+          : `Training · ${lesson?.title ?? ''}`,
+    );
     const g = settings.value.graphics;
     try {
       this.world = await this.modules.createWorld(
@@ -345,7 +395,9 @@ export class Game {
     const rules: ModeRules =
       req.kind === 'instant'
         ? new InstantActionRules(req.options, meta.name, aircraftAvailable)
-        : new FreeFlightRules(req.options, meta.name);
+        : req.kind === 'lesson' && lesson
+          ? new LessonRules(lesson, meta.name)
+          : new FreeFlightRules(req.kind === 'free' ? req.options : { ...this.freeDefaults, map }, meta.name);
     this.ui.setLoadingProgress(0.88, 'Briefing aircrew');
     const seed = timeSeed();
     rng.seed(seed);
@@ -361,7 +413,7 @@ export class Game {
         ordnance: this.modules.createOrdnanceModel,
       },
       rules,
-      { aircraft: req.options.aircraft, seed, unlimitedFuel: req.kind === 'free' },
+      { aircraft: req.options.aircraft, seed, unlimitedFuel: req.kind !== 'instant' },
     );
     this.session = session;
     this.resize();
@@ -456,6 +508,8 @@ export class Game {
     profile.data.stats.shotsFired += p?.shotsFired ?? 0;
     profile.data.stats.shotsHit += p?.shotsHit ?? 0;
     profile.addXp(r.xp);
+    if (s.rules instanceof LessonRules && r.outcome === 'success')
+      profile.recordLesson(s.rules.def.id, r.medal, s.time);
     profile.save();
     const after = profile.view();
     const unlocks = AIRCRAFT_IDS.filter(

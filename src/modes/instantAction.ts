@@ -1,10 +1,16 @@
 import { Vector3 } from 'three';
 import type { Aircraft } from '../aircraft/aircraft';
 import type { KillEvent } from '../combat/targetable';
-import { fmtTime } from '../core/math';
 import type { AircraftId, InstantActionOptions, Team } from '../core/types';
 import { AIRCRAFT } from '../data/aircraft';
-import { spawnLabel, type HudObjective, type ModeResult, type ModeRules, type Session } from './session';
+import {
+  ScoreBox,
+  spawnLabel,
+  type HudObjective,
+  type ModeResult,
+  type ModeRules,
+  type Session,
+} from './session';
 
 /**
  * Instant Action dogfight (spec §5.1): configurable teams, skill, weapons rules, respawns and limits.
@@ -172,22 +178,36 @@ export class InstantActionRules implements ModeRules {
     return this.ended;
   }
 
+  private readonly objective: HudObjective = { text: '', done: false, failed: false };
+  private readonly objectiveList: HudObjective[] = [this.objective];
+  private lastRedAlive = -1;
+  private readonly scoreBox = new ScoreBox();
+  private scoreKey = -1;
+  private leftText = '';
+  private rightText = '';
+
   objectives(s: Session): readonly HudObjective[] {
-    const redAlive = s.sim.aircraft.filter((a) => a.team === 'red' && a.alive).length;
-    if (this.o.scoreLimit > 0)
-      return [{ text: `First to ${this.o.scoreLimit} kills`, done: false, failed: false }];
-    if (!this.o.respawn)
-      return [{ text: `Destroy all bandits  (${redAlive} remaining)`, done: redAlive === 0, failed: false }];
-    return [{ text: 'Win the air battle', done: false, failed: false }];
+    let redAlive = 0;
+    for (const a of s.sim.aircraft) if (a.team === 'red' && a.alive) redAlive++;
+    if (redAlive !== this.lastRedAlive) {
+      this.lastRedAlive = redAlive;
+      if (this.o.scoreLimit > 0) this.objective.text = `First to ${this.o.scoreLimit} kills`;
+      else if (!this.o.respawn) this.objective.text = `Destroy all bandits  (${redAlive} remaining)`;
+      else this.objective.text = 'Win the air battle';
+      this.objective.done = !this.o.respawn && this.o.scoreLimit === 0 && redAlive === 0;
+    }
+    return this.objectiveList;
   }
 
   score(s: Session): { left: string; right: string; timer: string } {
     const elapsed = s.time - this.startTime;
     const limit = this.o.timeLimit * 60;
-    return {
-      left: `BLUE ${this.blueScore}`,
-      right: `RED ${this.redScore}`,
-      timer: limit > 0 ? fmtTime(Math.max(0, limit - elapsed)) : fmtTime(elapsed),
-    };
+    const key = this.blueScore * 1000 + this.redScore;
+    if (key !== this.scoreKey) {
+      this.scoreKey = key;
+      this.leftText = `BLUE ${this.blueScore}`;
+      this.rightText = `RED ${this.redScore}`;
+    }
+    return this.scoreBox.set(this.leftText, this.rightText, limit > 0 ? limit - elapsed : elapsed);
   }
 }

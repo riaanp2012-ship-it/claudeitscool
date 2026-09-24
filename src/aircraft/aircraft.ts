@@ -401,6 +401,13 @@ export class Aircraft implements Targetable, DamageSource {
     this.visual.damage.tail = tail;
   }
 
+  /** Restores full health (training checkpoints). */
+  repair(): void {
+    for (const p of PARTS) this.hp[p] = this.maxHp[p];
+    this.damageLog.length = 0;
+    this.applyDamageEffects();
+  }
+
   /** Critical failure check: returns true if the aircraft has just been destroyed. */
   checkDestroyed(): boolean {
     if (!this.alive) return false;
