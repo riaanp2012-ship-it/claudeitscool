@@ -1,0 +1,15 @@
+import { defineConfig } from 'vite';
+
+export default defineConfig({
+  // Relative base so the build runs from any path (static hosting, file shares, artifact pages).
+  base: './',
+  server: { port: Number(process.env.PORT ?? 5173), strictPort: true },
+  preview: { port: Number(process.env.PORT ?? 4173), strictPort: true },
+  build: {
+    target: 'es2022',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1200,
+    assetsInlineLimit: 0,
+  },
+  worker: { format: 'es' },
+});

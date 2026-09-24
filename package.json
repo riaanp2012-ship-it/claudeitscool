@@ -1,0 +1,39 @@
+{
+  "name": "splash-one",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SPLASH ONE: a 3D jet combat game for desktop browsers",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint . --max-warnings 0 && prettier --check \"src/**/*.{ts,css}\" \"tests/**/*.ts\"",
+    "format": "prettier --write \"src/**/*.{ts,css}\" \"tests/**/*.ts\"",
+    "guard": "node scripts/guard.mjs",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run lint && npm run guard && npm run test && npm run build",
+    "e2e": "playwright test --project=e2e",
+    "bench": "npm run build && playwright test --project=bench"
+  },
+  "dependencies": {
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "postprocessing": "^6.39.5",
+    "three": "~0.186.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.4",
+    "@types/three": "~0.186.0",
+    "eslint": "^10.11.0",
+    "prettier": "^3.9.9",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
+  }
+}
