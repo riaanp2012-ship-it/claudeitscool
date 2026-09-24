@@ -291,6 +291,13 @@ export function buildHudState(s: Session, st: HudState): void {
     th.kind = ac.locked ? 'lock' : 'search';
     th.distance = ac.body.position.distanceTo(b.position);
   }
+  for (const g of s.sim.grounds) {
+    if (!g.alive || g.tracking !== p) continue;
+    const th = (threats[tn++] ??= { bearing: 0, kind: 'search', distance: 0 });
+    th.bearing = relativeBearing(p, g.position);
+    th.kind = g.trackTime > 4 ? 'lock' : 'search';
+    th.distance = g.position.distanceTo(b.position);
+  }
   let missileClose = false;
   for (const m of s.sim.combat.missiles.items) {
     if (m.isGuidedAt !== p) continue;

@@ -1,14 +1,13 @@
 import { Color, Vector3 } from 'three';
-import type { Aircraft } from '../aircraft/aircraft';
 import { rng } from '../core/rng';
-import type { DamagePart, Targetable } from './targetable';
+import type { DamagePart, Shooter, Targetable } from './targetable';
 
 /**
  * Pooled cannon rounds in typed arrays (spec §5.3). Each step every round is tested along its swept
  * segment against target spheres/capsules, so 1,000 m/s rounds never tunnel (ZD-D04).
  */
 export interface BulletCallbacks {
-  onHit(target: Targetable, part: DamagePart, position: Vector3, shooter: Aircraft, damage: number): void;
+  onHit(target: Targetable, part: DamagePart, position: Vector3, shooter: Shooter, damage: number): void;
   onImpact(position: Vector3, kind: 'ground' | 'water'): void;
 }
 
@@ -31,7 +30,7 @@ export class BulletSystem {
   private readonly life: Float32Array;
   private readonly damage: Float32Array;
   private readonly tracer: Uint8Array;
-  private readonly shooter: (Aircraft | null)[];
+  private readonly shooter: (Shooter | null)[];
   friendlyFire = false;
 
   constructor(capacity = 2400) {
@@ -45,12 +44,12 @@ export class BulletSystem {
     this.life = new Float32Array(capacity);
     this.damage = new Float32Array(capacity);
     this.tracer = new Uint8Array(capacity);
-    this.shooter = new Array<Aircraft | null>(capacity).fill(null);
+    this.shooter = new Array<Shooter | null>(capacity).fill(null);
   }
 
   /** Fires one round from `origin` along `dir` (unit) with dispersion; inherits the shooter's velocity. */
   fire(
-    shooter: Aircraft,
+    shooter: Shooter,
     origin: Vector3,
     dir: Vector3,
     speed: number,
@@ -66,7 +65,7 @@ export class BulletSystem {
     _dir.y += rng.gauss() * dispersion;
     _dir.z += rng.gauss() * dispersion;
     _dir.normalize();
-    const v = shooter.body.velocity;
+    const v = shooter.velocity;
     this.px[i] = origin.x;
     this.py[i] = origin.y;
     this.pz[i] = origin.z;

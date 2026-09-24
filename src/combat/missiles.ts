@@ -1,11 +1,10 @@
 import { Color, Group, Object3D, Quaternion, Vector3 } from 'three';
-import type { Aircraft } from '../aircraft/aircraft';
 import { clamp, lerp, smoothstep } from '../core/math';
 import { rng } from '../core/rng';
 import type { HardpointKind, OrdnanceModelFactory, Team, TrailHandle } from '../core/types';
 import { MISSILES, UNGUIDED, type MissileDef, type MissileKind, type UnguidedDef } from '../data/weapons';
 import type { Decoy } from './decoys';
-import type { Targetable } from './targetable';
+import type { Shooter, Targetable } from './targetable';
 
 /**
  * Guided missiles, rockets and bombs (spec §5.3). Guidance is true proportional navigation with gravity
@@ -30,7 +29,7 @@ export class Missile {
   kind: HardpointKind = 'srm';
   guided: MissileDef | null = null;
   unguided: UnguidedDef | null = null;
-  owner: Aircraft | null = null;
+  owner: Shooter | null = null;
   team: Team = 'blue';
   target: Targetable | null = null;
   decoy: Decoy | null = null;
@@ -108,7 +107,7 @@ export class MissileSystem {
   }
 
   launch(
-    owner: Aircraft,
+    owner: Shooter,
     kind: HardpointKind,
     origin: Vector3,
     target: Targetable | null,
@@ -128,8 +127,8 @@ export class MissileSystem {
     m.notchTimer = 0;
     m.range = Infinity;
     m.position.copy(origin);
-    owner.body.forward(_vhat);
-    m.velocity.copy(owner.body.velocity);
+    owner.launchForward(_vhat);
+    m.velocity.copy(owner.velocity);
     m.hasGuidePoint = guidePoint !== null;
     if (guidePoint) m.guidePoint.copy(guidePoint);
     if (kind === 'rocketPod' || kind === 'bomb') {

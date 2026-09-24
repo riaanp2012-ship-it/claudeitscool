@@ -1,5 +1,5 @@
 import { Color, Quaternion, Vector3 } from 'three';
-import type { DamagePart, DamageSource, Targetable } from '../combat/targetable';
+import type { DamagePart, DamageSource, Shooter, Targetable } from '../combat/targetable';
 import { clamp, clamp01, dampFactor } from '../core/math';
 import { cosmetic } from '../core/rng';
 import type {
@@ -50,7 +50,7 @@ let nextUid = 1;
  * A single aircraft: flight body, systems, stores, damage and its visual/audio presentation.
  * Implements Targetable so weapons can lock and hit it and DamageSource so it can be credited.
  */
-export class Aircraft implements Targetable, DamageSource {
+export class Aircraft implements Targetable, Shooter {
   readonly uid = nextUid++;
   readonly kind: 'aircraft' | 'drone';
   readonly team: Team;
@@ -203,6 +203,10 @@ export class Aircraft implements Targetable, DamageSource {
 
   get rcs(): number {
     return this.def.rcs;
+  }
+
+  launchForward(out: Vector3): Vector3 {
+    return this.body.forward(out);
   }
 
   heat(): number {

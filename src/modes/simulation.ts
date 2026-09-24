@@ -2,11 +2,12 @@ import { Vector3 } from 'three';
 import { AiPilot, type AiContext, type AiWorld } from '../ai/pilot';
 import type { Aircraft } from '../aircraft/aircraft';
 import { Combat } from '../combat/combat';
-import type { DamageSource, KillEvent, Targetable } from '../combat/targetable';
+import type { DamageSource, KillEvent, Shooter, Targetable } from '../combat/targetable';
 import { updateLock } from '../combat/targeting';
 import { rng } from '../core/rng';
 import type { HardpointKind, OrdnanceModelFactory } from '../core/types';
 import type { Missile } from '../combat/missiles';
+import type { GroundTarget } from '../combat/groundTarget';
 import type { FlightEvent } from '../flight/flightModel';
 
 /**
@@ -19,12 +20,13 @@ export interface SimWorld extends AiWorld {
 
 export interface SimListener {
   onKill?(e: KillEvent): void;
-  onHit?(target: Targetable, shooter: Aircraft | null, damage: number, weapon: string): void;
-  onMissileLaunch?(owner: Aircraft, kind: HardpointKind, missile: Missile): void;
+  onHit?(target: Targetable, shooter: Shooter | null, damage: number, weapon: string): void;
+  onMissileLaunch?(owner: Shooter, kind: HardpointKind, missile: Missile): void;
   onMissileDefeated?(missile: Missile, reason: string): void;
   onDestroyed?(ac: Aircraft, cause: 'weapon' | 'crash' | 'water' | 'collision'): void;
   onWreckImpact?(ac: Aircraft, water: boolean): void;
   onLanding?(ac: Aircraft, event: FlightEvent): void;
+  onGroundDestroyed?(g: GroundTarget): void;
 }
 
 const KILL_CREDIT_WINDOW = 25; // s
@@ -34,6 +36,7 @@ export class Simulation implements AiContext {
   readonly aircraft: Aircraft[] = [];
   readonly targets: Targetable[] = [];
   readonly pilots = new Map<Aircraft, AiPilot>();
+  readonly grounds: GroundTarget[] = [];
   readonly combat: Combat;
   readonly world: SimWorld;
   readonly kills: KillEvent[] = [];
@@ -76,8 +79,9 @@ export class Simulation implements AiContext {
     this.losClear.delete(ac);
   }
 
-  addTarget(t: Targetable): void {
-    this.targets.push(t);
+  addGround(g: GroundTarget): void {
+    this.grounds.push(g);
+    this.targets.push(g);
   }
 
   attackersOf(target: Aircraft): number {
@@ -124,9 +128,13 @@ export class Simulation implements AiContext {
       }
     }
 
+    for (const g of this.grounds) g.step(dt, this.aircraft, this.combat, this.world.lineOfSightBlocked);
     this.combat.step(dt);
 
     // Deaths from damage
+    for (const g of this.grounds) {
+      if (g.alive && g.hp <= 0) this.destroyGround(g);
+    }
     for (const ac of this.aircraft) {
       if (ac.alive && ac.checkDestroyed()) this.destroy(ac, 'weapon', this.lastWeapon(ac));
     }
@@ -161,11 +169,12 @@ export class Simulation implements AiContext {
     const recent = ac.damageLog.filter((r) => r.age <= KILL_CREDIT_WINDOW);
     let killer: DamageSource | null = null;
     const assists: DamageSource[] = [];
-    if (recent.length > 0) {
-      killer = recent[recent.length - 1]!.source;
+    const last = recent[recent.length - 1];
+    if (last) {
+      const k = last.source;
+      killer = k;
       for (const r of recent)
-        if (r.source.uid !== killer.uid && !assists.some((a) => a.uid === r.source.uid))
-          assists.push(r.source);
+        if (r.source.uid !== k.uid && !assists.some((a) => a.uid === r.source.uid)) assists.push(r.source);
     }
     if (killer && killer.team === ac.team) killer = null; // no credit for friendly fire
     if (killer) {
@@ -185,12 +194,35 @@ export class Simulation implements AiContext {
     this.listener.onKill?.(event);
   }
 
+  private destroyGround(g: GroundTarget): void {
+    g.alive = false;
+    g.tracking = null;
+    const recent = g.damageLog.filter((r) => r.age <= KILL_CREDIT_WINDOW);
+    const killer = recent[recent.length - 1]?.source ?? null;
+    if (killer) {
+      const killerAc = this.aircraft.find((x) => x.uid === killer.uid);
+      if (killerAc) killerAc.kills++;
+    }
+    const event: KillEvent = {
+      victim: g,
+      killer,
+      assists: [],
+      weapon: this.lastWeaponHit.get(g) ?? 'bomb',
+      cause: 'weapon',
+      time: this.time,
+    };
+    this.kills.push(event);
+    this.listener.onGroundDestroyed?.(g);
+    this.listener.onKill?.(event);
+  }
+
   /** Detaches everything (restart/quit). */
   clear(): void {
     this.combat.clear();
     this.aircraft.length = 0;
     this.targets.length = 0;
     this.pilots.clear();
+    this.grounds.length = 0;
     this.kills.length = 0;
     this.lastWeaponHit.clear();
     this.losTimers.clear();

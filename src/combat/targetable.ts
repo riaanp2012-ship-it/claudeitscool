@@ -37,6 +37,15 @@ export interface DamageSource {
   readonly isPlayer: boolean;
 }
 
+/** Anything that fires guns or missiles: aircraft, SAM sites, flak batteries, ships. */
+export interface Shooter extends DamageSource {
+  /** Velocity inherited by rounds and missiles at launch. */
+  readonly velocity: Vector3;
+  /** Launch direction (unit) for missiles leaving the rail/tube. */
+  launchForward(out: Vector3): Vector3;
+  shotsHit: number;
+}
+
 export interface KillEvent {
   victim: Targetable;
   killer: DamageSource | null;

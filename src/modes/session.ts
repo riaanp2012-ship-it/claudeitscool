@@ -3,6 +3,8 @@ import { AiPilot, type AiSkill } from '../ai/pilot';
 import { Aircraft, type LoadoutRule } from '../aircraft/aircraft';
 import { CameraRig } from '../camera/rig';
 import type { KillEvent, Targetable } from '../combat/targetable';
+import { GroundTarget } from '../combat/groundTarget';
+import { createGroundModel, wreckGroundModel } from '../combat/groundModels';
 import { selectTarget } from '../combat/targeting';
 import { FixedStep } from '../core/loop';
 import { clamp, clamp01 } from '../core/math';
@@ -13,6 +15,8 @@ import type {
   AircraftModelFactory,
   AudioSystem,
   CockpitTones,
+  GroundTargetKind,
+  TrailHandle,
   Fx,
   Hud,
   HudState,
@@ -149,6 +153,7 @@ export class Session {
   private readonly instructor = new Instructor();
   private autoTargetTimer = 0;
   private readonly casters: Object3D[] = [];
+  private readonly burning: { position: Vector3; trail: TrailHandle | null; until: number }[] = [];
   private toneState: CockpitTones = {
     seeker: 'off',
     radarLock: false,
@@ -159,7 +164,7 @@ export class Session {
     g: 1,
   };
   /** Stats for the debrief. */
-  readonly stats = { kills: 0, assists: 0, deaths: 0, damageTaken: 0, missiles: 0 };
+  readonly stats = { kills: 0, assists: 0, deaths: 0, damageTaken: 0, missiles: 0, groundKills: 0 };
   private disposed = false;
 
   constructor(services: SessionServices, rules: ModeRules, options: SessionOptions) {
@@ -200,6 +205,18 @@ export class Session {
           this.rig.addTrauma(0.25);
           this.stats.damageTaken++;
         }
+      },
+      onGroundDestroyed: (g) => {
+        services.fx.explosion(g.position, g.type === 'ship' ? 'water' : 'ground');
+        services.fx.explosion(g.position, 'air-large');
+        services.fx.flash(g.position, EXPLOSION_FLASH, 20, 600, 0.6);
+        services.audio.play('explosionGround', { position: g.position, volume: 1 });
+        if (g.model) wreckGroundModel(g.model);
+        this.burning.push({
+          position: g.position.clone(),
+          trail: services.fx.trail('damage-smoke'),
+          until: this.sim.time + 45,
+        });
       },
       onMissileLaunch: (owner, kind) => {
         if (owner.isPlayer) {
@@ -274,6 +291,26 @@ export class Session {
     return ac;
   }
 
+  /** Places a destructible ground unit (SAM, flak, radar, ship, building). */
+  spawnGround(
+    kind: GroundTargetKind,
+    team: Team,
+    position: Vector3,
+    heading: number,
+    group: string,
+    label?: string,
+  ): GroundTarget {
+    const g = new GroundTarget(kind, team, position, heading, group, rng.nextU32());
+    if (label) g.label = label;
+    const model = createGroundModel(kind, this.world.map === 'mesa');
+    model.position.copy(position);
+    model.rotation.y = -heading;
+    this.scene.add(model);
+    g.model = model;
+    this.sim.addGround(g);
+    return g;
+  }
+
   /** Removes an aircraft completely (after its wreck has landed, or on respawn). */
   despawn(ac: Aircraft): void {
     ac.releasePresentation();
@@ -301,6 +338,19 @@ export class Session {
   }
 
   private handleKill(e: KillEvent): void {
+    if (e.victim.kind === 'ground' || e.victim.kind === 'ship') {
+      const label = e.victim.label;
+      this.timeline.push({ time: this.sim.time, text: `${e.killer?.label ?? 'Unknown'} destroyed ${label}` });
+      this.pushFeed(`${e.killer?.label ?? '—'}  ›  ${label}`, e.victim.team === 'red');
+      if (e.killer?.isPlayer) {
+        this.stats.groundKills++;
+        this.showMessage('TARGET DESTROYED', label, 2.2);
+        this.radio(this.player.label, 'Shack.');
+        this.services.audio.play('killConfirm');
+      }
+      this.rules.onKill?.(this, e);
+      return;
+    }
     const victim = e.victim as unknown as Aircraft;
     const killer = e.killer;
     const friendlyVictim = victim.team === 'blue';
@@ -405,6 +455,18 @@ export class Session {
       if (ac.model && ac.lod < 2 && ac.body.position.distanceTo(this.camera.position) < 1500)
         this.casters.push(ac.model.root);
       this.updateVoices(ac);
+    }
+    for (const g of this.sim.grounds) if (g.model && g.speed > 0) g.model.position.copy(g.position);
+    for (let i = this.burning.length - 1; i >= 0; i--) {
+      const b = this.burning[i]!;
+      if (this.sim.time > b.until) {
+        b.trail?.release();
+        this.burning.splice(i, 1);
+      } else {
+        _v.copy(b.position);
+        _v.y += 6 + ((this.sim.time * 7) % 1);
+        b.trail?.push(_v, 1);
+      }
     }
     this.sim.combat.present();
     s.fx.update(this.paused ? 0 : dt, this.camera, surfaceAt);
@@ -654,6 +716,7 @@ export class Session {
       const k = ac.selectedKind();
       if (k === 'mrm' || k === 'lraam') rwr = 'spike';
     }
+    for (const g of this.sim.grounds) if (g.alive && g.tracking === p) rwr = 'spike';
     let incoming = false;
     for (const m of this.sim.combat.missiles.items) {
       if (m.isGuidedAt !== p) continue;
@@ -673,6 +736,9 @@ export class Session {
     this.disposed = true;
     this.rules.dispose?.(this);
     for (const ac of [...this.sim.aircraft]) this.despawn(ac);
+    for (const g of this.sim.grounds) g.model?.removeFromParent();
+    for (const b of this.burning) b.trail?.release();
+    this.burning.length = 0;
     this.sim.clear();
     this.sim.combat.missiles.dispose();
     this.services.fx.clear();

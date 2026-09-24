@@ -7,15 +7,15 @@ import { BulletSystem } from './bullets';
 import { DecoySystem } from './decoys';
 import { MissileSystem, type DetonationKind, type Missile } from './missiles';
 import { missileDefFor } from './targeting';
-import type { DamagePart, Targetable } from './targetable';
+import type { DamagePart, Shooter, Targetable } from './targetable';
 
 /**
  * Owns every projectile system and routes hits, blasts and kills (spec §5.3, §5.5).
  * Player and AI fire through the same methods, so the AI has no special weapons (ZD-F11).
  */
 export interface CombatEvents {
-  onHit(target: Targetable, shooter: Aircraft | null, damage: number, weapon: string): void;
-  onMissileLaunch(owner: Aircraft, kind: HardpointKind, missile: Missile): void;
+  onHit(target: Targetable, shooter: Shooter | null, damage: number, weapon: string): void;
+  onMissileLaunch(owner: Shooter, kind: HardpointKind, missile: Missile): void;
   onMissileDefeated(missile: Missile, reason: string): void;
 }
 
@@ -158,7 +158,7 @@ export class Combat {
     target: Targetable,
     part: DamagePart,
     position: Vector3,
-    shooter: Aircraft,
+    shooter: Shooter,
     damage: number,
   ): void {
     target.applyDamage(damage, part, shooter);
@@ -170,7 +170,7 @@ export class Combat {
         volume: 0.7,
       });
     }
-    this.events?.onHit(target, shooter, damage, shooter.gun.id);
+    this.events?.onHit(target, shooter, damage, 'gun' in shooter ? (shooter as Aircraft).gun.id : 'flak');
   }
 
   private detonate(m: Missile, position: Vector3, kind: DetonationKind): void {
