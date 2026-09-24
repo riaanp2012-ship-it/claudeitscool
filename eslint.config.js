@@ -2,7 +2,7 @@ import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'dist-test', 'node_modules', 'artifacts', 'test-results', 'playwright-report', 'scripts'] },
+  { ignores: ['.claude', 'dist', 'dist-test', 'node_modules', 'artifacts', 'test-results', 'playwright-report', 'scripts'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {

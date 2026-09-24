@@ -6,3 +6,4 @@ playwright-report
 .env*
 *.log
 dist-test
+.claude/worktrees
