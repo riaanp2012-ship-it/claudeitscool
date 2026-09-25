@@ -1,11 +1,15 @@
 import { Vector3 } from 'three';
 import type { GunVoice } from '../core/types';
+import { GUN25_LOOP, GUN30_LOOP } from './dsp';
 import { NodeSet, type AudioHost } from './host';
 import { SmoothParam, envAD, holdParam } from './params';
 import { SpatialChain, type SpatialProfile } from './spatial';
 import { distance, distanceGain, dopplerFactor, ratioToCents } from './util';
 
 export type GunKind = 'gun25' | 'gun30';
+
+/** Time from trigger to the first round's crack (s). */
+const FIRST_ROUND_DELAY = 0.014;
 
 export const GUN_PROFILE: SpatialProfile = { ref: 40, rolloff: 1, maxDistance: 4500, reverb: true };
 
@@ -51,8 +55,10 @@ class Burst {
       const grit = s.shaper(bank.grit, '2x');
       const shelf = s.filter('lowshelf', 130, 0.7, 5);
       const presence = s.filter('peaking', 2300, 1, 2.5);
-      this.loop.connect(grit).connect(shelf).connect(presence).connect(this.gate);
-      this.gate.connect(level).connect(mixer.interior);
+      // The gate sits right after the source: the oversampling shaper adds latency, and the loop's first
+      // sample is mid-round, so gating after the shaper would let that step through a half-open gate.
+      this.loop.connect(this.gate).connect(grit).connect(shelf).connect(presence).connect(level);
+      level.connect(mixer.interior);
       this.out = mixer.interior;
       this.spatial = null;
     } else {
@@ -65,7 +71,10 @@ class Burst {
     }
     this.dop = new SmoothParam(this.loop.detune, 0.03, 3, 0);
 
-    this.loop.start(t, 0);
+    // Start between rounds so the first crack lands ~14 ms in, after the gate has fully opened.
+    const spec = kind === 'gun25' ? GUN25_LOOP : GUN30_LOOP;
+    const period = Math.round(ctx.sampleRate / spec.rate) / ctx.sampleRate;
+    this.loop.start(t, Math.max(0, period - FIRST_ROUND_DELAY));
     this.gate.gain.setValueAtTime(0, t);
     this.gate.gain.linearRampToValueAtTime(1, t + 0.012);
     this.loop.playbackRate.setValueAtTime(tune.spinFrom, t);

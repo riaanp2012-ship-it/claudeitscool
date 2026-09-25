@@ -28,6 +28,9 @@ export interface AudioCoreOptions {
   maxAiGuns?: number;
 }
 
+/** Engine graphs built per update() at most (spreads the node-creation cost of a mission start). */
+const MAX_BUILDS_PER_FRAME = 2;
+
 export const DEFAULT_VOLUMES: Readonly<AudioVolumes> = {
   master: 0.8,
   music: 0.5,
@@ -185,14 +188,18 @@ export class AudioCore implements AudioHost {
       this.selected[i] = e.active ? 1 : 0;
     }
     this.selector.select(this.scores, ne, this.maxAiEngines, 1e-3, 1.3, this.selected);
+    // Building an engine graph costs ~0.3 ms, so at most MAX_BUILDS_PER_FRAME start per frame (player first).
+    let builds = 0;
     for (let i = 0; i < ne; i++) {
       const e = this.engines[i]!;
-      if (e.isPlayer) {
-        e.update(now, live);
-        if (e.hasParams && Number.isFinite(e.params.g)) playerG = Math.max(playerG, e.params.g);
-      } else {
-        e.update(now, live && this.selected[i] === 1);
-      }
+      if (!e.isPlayer) continue;
+      if (e.update(now, live, builds < MAX_BUILDS_PER_FRAME)) builds++;
+      if (e.hasParams && Number.isFinite(e.params.g)) playerG = Math.max(playerG, e.params.g);
+    }
+    for (let i = 0; i < ne; i++) {
+      const e = this.engines[i]!;
+      if (e.isPlayer) continue;
+      if (e.update(now, live && this.selected[i] === 1, builds < MAX_BUILDS_PER_FRAME)) builds++;
     }
 
     // Guns: same idea.

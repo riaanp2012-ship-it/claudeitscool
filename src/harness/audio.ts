@@ -59,6 +59,7 @@ interface Result {
   spec: Float32Array[];
   updateAvgMs: number;
   updateMaxMs: number;
+  updateP95Ms: number;
 }
 
 const origin = new Vector3();
@@ -242,9 +243,11 @@ function centroid(x: Float32Array, from: number, to: number): number {
   return den > 0 ? num / den : 0;
 }
 
-const WAVE_COLS = 250;
-const SPEC_COLS = 125;
-const SPEC_ROWS = 60;
+/** Display resolution; zoom mode (a single scenario) uses more. */
+const ZOOM = new URLSearchParams(window.location.search).has('zoom');
+const WAVE_COLS = ZOOM ? 1500 : 250;
+const SPEC_COLS = ZOOM ? 700 : 125;
+const SPEC_ROWS = ZOOM ? 160 : 60;
 const F_LO = 30;
 const F_HI = 20000;
 
@@ -347,6 +350,9 @@ function analyze(s: Scenario, r: Rendered): Result {
     spec,
     updateAvgMs: r.updateMs.length ? upd / r.updateMs.length : 0,
     updateMaxMs: updMax,
+    updateP95Ms: r.updateMs.length
+      ? r.updateMs.slice().sort((a, b) => a - b)[Math.floor(r.updateMs.length * 0.95)]!
+      : 0,
   };
 }
 
@@ -752,7 +758,7 @@ function drawCell(g: CanvasRenderingContext2D, r: Result, x: number, y: number, 
   g.fillText(r.pass ? `${stat}  OK` : `${stat}  ${r.fails.join(',')}`, x + 6, y + 25);
 
   const wy = y + 30;
-  const wh = 36;
+  const wh = ZOOM ? 220 : 36;
   g.strokeStyle = '#2a3034';
   g.beginPath();
   g.moveTo(x + 4, wy + wh / 2);
@@ -827,6 +833,7 @@ async function main(): Promise<void> {
   const t0 = performance.now();
   const results: Result[] = [];
   const timings: number[] = [];
+  const dumped: number[] = [];
   const only = new URLSearchParams(window.location.search).get('only');
   const keys = only ? only.split(',') : null;
   const list = keys ? SCENARIOS.filter((s) => keys.some((k) => s.name.includes(k))) : SCENARIOS;
@@ -834,12 +841,22 @@ async function main(): Promise<void> {
     const s = list[i]!;
     document.title = `audio ${i + 1}/${list.length}: ${s.name}`;
     const ts = performance.now();
-    results.push(analyze(s, await render(s)));
+    const rendered = await render(s);
+    const dump = new URLSearchParams(window.location.search).get('dump');
+    if (dump && i === 0) {
+      const [a = 0, b = 0] = dump.split(',').map(Number);
+      dumped.push(
+        ...Array.from(rendered.left.subarray(Math.floor(a * SR), Math.floor(b * SR)), (x) =>
+          Number(x.toFixed(4)),
+        ),
+      );
+    }
+    results.push(analyze(s, rendered));
     timings.push(Math.round(performance.now() - ts));
   }
   const renderMs = performance.now() - t0;
 
-  const colsN = 6;
+  const colsN = ZOOM ? 1 : 6;
   const header = 40;
   const rowsN = Math.ceil(results.length / colsN);
   const cw = Math.floor(W / colsN);
@@ -852,7 +869,7 @@ async function main(): Promise<void> {
   g.font = '600 14px monospace';
   g.fillText(
     `SPLASH ONE audio: ${passed}/${results.length} pass  |  rendered offline in ${(renderMs / 1000).toFixed(1)} s  |  ` +
-      `update() avg ${battle ? battle.updateAvgMs.toFixed(3) : '-'} ms, max ${battle ? battle.updateMaxMs.toFixed(2) : '-'} ms (12 AI + player)`,
+      `update() avg ${battle ? battle.updateAvgMs.toFixed(3) : '-'} ms, p95 ${battle ? battle.updateP95Ms.toFixed(2) : '-'} ms, max ${battle ? battle.updateMaxMs.toFixed(2) : '-'} ms (12 AI + player)`,
     12,
     18,
   );
@@ -872,8 +889,10 @@ async function main(): Promise<void> {
     total: results.length,
     renderMs: Math.round(renderMs),
     timings,
+    dump: dumped,
     updateAvgMs: battle ? Number(battle.updateAvgMs.toFixed(4)) : null,
     updateMaxMs: battle ? Number(battle.updateMaxMs.toFixed(3)) : null,
+    updateP95Ms: battle ? Number(battle.updateP95Ms.toFixed(3)) : null,
     results: results.map((r) => ({
       name: r.name,
       pass: r.pass,

@@ -303,11 +303,19 @@ export class EngineVoiceImpl implements EngineVoice {
     return this.score;
   }
 
-  update(now: number, audible: boolean): void {
+  /**
+   * `canBuild` is false when this frame's graph-building budget is spent; the voice then starts next frame.
+   * Returns true when a graph was built.
+   */
+  update(now: number, audible: boolean, canBuild = true): boolean {
     const want = audible && this.hasParams && !this.disposed;
-    if (want && !this.graph) this.graph = new EngineGraph(this.host, this.isPlayer, now);
-    else if (!want && this.graph) this.silence(now);
+    let built = false;
+    if (want && !this.graph && canBuild) {
+      this.graph = new EngineGraph(this.host, this.isPlayer, now);
+      built = true;
+    } else if (!want && this.graph) this.silence(now);
     if (this.graph) this.apply(this.graph, now);
+    return built;
   }
 
   private apply(g: EngineGraph, now: number): void {
@@ -359,7 +367,7 @@ export class EngineVoiceImpl implements EngineVoice {
       const mach = Number.isFinite(p.mach) ? p.mach : 0;
       const transonic = Math.max(0, 1 - Math.abs(mach - 1) / 0.06);
       g.buffet?.put(0.6 * stallF + 0.12 * transonic, now, f);
-      g.hum?.put(cockpit ? 0.03 : 0, now, f);
+      g.hum?.put(cockpit ? 0.018 : 0, now, f);
       g.hiss?.put(cockpit ? 0.012 + 0.02 * Math.min(1.5, speedN) : 0, now, f);
     } else {
       g.wind.put(windBase * 0.8, now, f);

@@ -33,7 +33,7 @@ export class StrainVoice {
     }
     if (this.nextAt === 0) this.nextAt = Math.max(now + this.host.lookahead, this.currentEnd);
     if (this.nextAt - now < 0.15) {
-      const period = (3.1 - 1.3 * level) * (0.92 + 0.16 * this.host.rnd.next());
+      const period = (2.7 - 1.1 * level) * (0.92 + 0.16 * this.host.rnd.next());
       this.breath(this.nextAt, level, period);
       this.nextAt += period;
     }
@@ -57,7 +57,7 @@ export class StrainVoice {
 
     // Strain hold: a low voiced grunt through vocal-tract formants, with a little breath leaking.
     const holdStart = inEnd + 0.04;
-    const hold = Math.max(0.35, period - 0.75);
+    const hold = Math.min(1.1, Math.max(0.35, period - 0.75));
     const voice = s.gain(0);
     voice.connect(gate);
     const f0 = 100 + 14 * level + 8 * rnd.next();
@@ -68,8 +68,14 @@ export class StrainVoice {
     const f1 = s.filter('bandpass', 520, 5);
     const f2 = s.filter('bandpass', 1250, 6);
     const f2g = s.gain(0.6);
-    glottal.connect(f1).connect(voice);
-    glottal.connect(f2).connect(f2g).connect(voice);
+    // The effort trembles: a random amplitude wobble in series with the envelope.
+    const trem = s.gain(0.75);
+    const tremSrc = s.buffer(bank.smoothMid, 2.2);
+    const tremDepth = s.gain(0.25);
+    tremSrc.connect(tremDepth).connect(trem.gain);
+    trem.connect(voice);
+    glottal.connect(f1).connect(trem);
+    glottal.connect(f2).connect(f2g).connect(trem);
     const leak = s.filter('bandpass', 750, 1);
     const leakG = s.gain(0.25);
     n1.connect(leak).connect(leakG).connect(voice);

@@ -234,9 +234,11 @@ export class CockpitTonesImpl {
       const bg = s.gain(0.25);
       const lp = s.filter('lowpass', 3500, 0.7);
       const level = s.gain(0.15);
+      // A hard square would switch pitch instantly (spectral splatter, audible ticks); round the edges first.
       const warble = s.osc('square', 7);
+      const round = s.filter('lowpass', 45, 0.6);
       const depth = s.gain(225);
-      warble.connect(depth);
+      warble.connect(round).connect(depth);
       depth.connect(a.frequency);
       depth.connect(b.frequency);
       a.connect(lp);
@@ -250,8 +252,9 @@ export class CockpitTonesImpl {
       const am = s.gain(0);
       const level = s.gain(0.13);
       const alt = s.osc('square', 1.25);
+      const altRound = s.filter('lowpass', 30, 0.6);
       const altDepth = s.gain(250);
-      alt.connect(altDepth).connect(carrier.frequency);
+      alt.connect(altRound).connect(altDepth).connect(carrier.frequency);
       gate(s, PATTERNS.maw, 9, am.gain);
       carrier.connect(lp).connect(am).connect(level).connect(out);
     });
