@@ -76,12 +76,14 @@ export const NOISE_SIZE = 128;
 
 // ─────────────────────────────────────────────────────────────── Particle styles
 
-/** Shader modes. Alpha batch: 0 lit smoke, 1 unlit tint. Additive batch: 0 tinted sprite, 1 fire, 2 streak. */
+/** Shader modes. Alpha batch: 0 lit smoke, 1 unlit tint. Additive: 0 sprite, 1 fire, 2 streak, 3 glow. */
 export const MODE_LIT = 0;
 export const MODE_TINT = 1;
 export const MODE_SPRITE = 0;
 export const MODE_FIRE = 1;
 export const MODE_STREAK = 2;
+/** Procedural soft glow (no texture, so bright glows never band). */
+export const MODE_GLOW = 3;
 
 export const COLLIDE_NONE = 0;
 /** Slides along the ground (smoke, dust). */

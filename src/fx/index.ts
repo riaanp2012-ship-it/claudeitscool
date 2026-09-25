@@ -89,6 +89,7 @@ import {
   MIN_SPRITE_PX,
   MIN_TRACER_PX,
   MODE_FIRE,
+  MODE_GLOW,
   MODE_SPRITE,
   MODE_STREAK,
   MUZZLE,
@@ -963,7 +964,7 @@ export class FxSystem implements Fx {
       C[o + 2] = q[s + 5]!;
       C[o + 3] = 1;
       R[o] = 0;
-      R[o + 1] = LAYER.GLOW + 16 * MODE_SPRITE;
+      R[o + 1] = LAYER.GLOW + 16 * MODE_GLOW;
       R[o + 2] = MIN_GLOW_PX;
       R[o + 3] = 0;
       D[o] = 0;
