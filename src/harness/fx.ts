@@ -106,6 +106,7 @@ noiseTex.minFilter = LinearMipmapLinearFilter;
 noiseTex.magFilter = LinearFilter;
 noiseTex.generateMipmaps = true;
 noiseTex.colorSpace = NoColorSpace;
+noiseTex.anisotropy = 8;
 noiseTex.needsUpdate = true;
 
 const isWater = sceneName === 'water';
@@ -158,6 +159,8 @@ void main() {
   }),
 );
 surface.frustumCulled = false;
+// At 9 km the sky's ground haze reads better than a finite plane with a visible edge.
+surface.visible = sceneName !== 'trails';
 h.scene.add(surface);
 
 // ─────────────────────────────────────────────────────────────── Script helpers
@@ -290,6 +293,8 @@ interface SceneDef {
   fov: number;
   step?: (t: number) => void;
   visuals?: (t: number) => void;
+  /** Moves the camera each step (chase views). */
+  follow?: (t: number) => void;
 }
 
 const DOT = new Color(0.035, 0.038, 0.042);
@@ -375,8 +380,8 @@ function groundScene(water: boolean): SceneDef {
   }
   return {
     start: -2,
-    camPos: water ? new Vector3(390, 26, 250) : new Vector3(420, 62, 270),
-    camTarget: new Vector3(-20, 30, -20),
+    camPos: water ? new Vector3(250, 20, 170) : new Vector3(260, 48, 180),
+    camTarget: new Vector3(-15, 24, -15),
     fov: 55,
     step: (t) => stepRounds(t),
     visuals: (t) => drawRounds(t),
@@ -398,9 +403,9 @@ function trailsScene(): SceneDef {
   });
 
   // Turning fighter with wingtip vortices, flares and a gun burst.
-  const center = new Vector3(-380, 8960, -950);
-  const R = 300;
-  const w = 0.42;
+  const center = new Vector3(-150, 9010, -380);
+  const R = 150;
+  const w = 0.8;
   const pos = (t: number, out: Vector3) => {
     const th = 0.6 + w * t;
     return out.set(
@@ -414,10 +419,10 @@ function trailsScene(): SceneDef {
     return out.set(-Math.sin(th) * R * w, Math.cos(t * 0.7) * 17.5, Math.cos(th) * R * w);
   };
   const right = (t: number, out: Vector3) => {
-    // Banked ~70°: the lift vector leans toward the turn center.
+    // Banked ~77°: the lift vector leans toward the turn center.
     const th = 0.6 + w * t;
     const inward = tmp3.set(-Math.cos(th), 0, -Math.sin(th));
-    const upv = new Vector3(0, 1, 0).multiplyScalar(Math.cos(1.2)).addScaledVector(inward, Math.sin(1.2));
+    const upv = new Vector3(0, 1, 0).multiplyScalar(Math.cos(1.35)).addScaledVector(inward, Math.sin(1.35));
     const fwd = vel(t, new Vector3()).normalize();
     return out.crossVectors(fwd, upv).normalize();
   };
@@ -458,11 +463,27 @@ function trailsScene(): SceneDef {
     rounds.push({ from, to, t0: tf, t1: tf + 1.2, hit: true, onHit: () => undefined });
   }
   const FLARE = new Color(1, 0.86, 0.95);
+  const chase = params.get('cam') === 'chase';
+  const fwd = new Vector3();
+  const upv = new Vector3();
   return {
     start: -12,
     camPos: new Vector3(0, 9000, 0),
-    camTarget: new Vector3(-620, 9150, -1500),
+    camTarget: new Vector3(-400, 9080, -1000),
     fov: 60,
+    follow: chase
+      ? (t) => {
+          // Chase view: behind and above the turning fighter, looking along its path.
+          const p = pos(t, tmp2);
+          vel(t, fwd).normalize();
+          right(t, tmp);
+          upv.crossVectors(tmp, fwd).normalize();
+          h.camera.position.copy(p).addScaledVector(fwd, -32).addScaledVector(upv, 7);
+          h.camera.up.copy(upv);
+          h.camera.lookAt(tmp3.copy(p).addScaledVector(fwd, 60));
+          h.camera.updateMatrixWorld();
+        }
+      : undefined,
     step: (t) => {
       stepMissiles(t);
       for (const c of contrails) {
@@ -495,7 +516,7 @@ function trailsScene(): SceneDef {
       drawRounds(t);
       for (let i = 0; i < slots.length; i++) fx.dot(lead(t, tmp).add(slots[i]!), DOT);
       const p = pos(t, tmp2);
-      fx.dot(p, DOT);
+      if (p.distanceTo(h.camera.position) > 1500) fx.dot(p, DOT);
       const back = vel(t, new Vector3()).normalize().multiplyScalar(-7);
       fx.glow(tmp.copy(p).add(back), BURNER, 2.4, 5);
       for (const f of flares) if (f.trail) fx.glow(f.p, FLARE, 7, 30);
@@ -573,6 +594,7 @@ function stepSim(dt: number): void {
     }
   }
   def.step?.(simT);
+  def.follow?.(simT);
   def.visuals?.(simT);
   fx.update(dt, h.camera, surfaceAt);
   updateSamples.push(fx.updateMs);
