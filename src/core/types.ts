@@ -549,6 +549,7 @@ export interface MainMenuHandlers {
   onInstantAction(): void;
   onFreeFlight(): void;
   onTraining(): void;
+  onSurvival?(): void;
   onHangar(): void;
   onSettings(): void;
   onCredits(): void;
