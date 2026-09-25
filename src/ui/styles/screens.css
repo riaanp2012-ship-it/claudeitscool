@@ -1491,3 +1491,15 @@
   font-size: 14px;
   line-height: 20px;
 }
+
+[data-short] .s1-hangar__id .s1-tag {
+  display: none;
+}
+
+[data-short] .s1-setup__side {
+  gap: var(--space-3);
+}
+
+[data-short] .s1-setup__block + .s1-setup__block {
+  padding-top: var(--space-3);
+}
