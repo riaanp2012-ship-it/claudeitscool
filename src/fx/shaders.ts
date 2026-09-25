@@ -4,7 +4,7 @@
  * attenuated by atmoTransmittance (never mixed toward the sky color). Colors are linear HDR.
  */
 import { ATMOSPHERE_GLSL } from '../render/atmosphere';
-import { FIRE_OCCLUSION, MIN_RIBBON_HALF_PX, RIBBON_KINDS } from './tuning';
+import { FIRE_EMIT, FIRE_OCCLUSION, MIN_RIBBON_HALF_PX, RIBBON_KINDS } from './tuning';
 
 const f = (v: number): string => (Number.isInteger(v) ? `${v}.0` : `${v}`);
 
@@ -121,7 +121,7 @@ void main() {
     float sz = sqrt(max(0.0, 1.0 - dot(sph, sph)));
     vec3 n = normalize(vRight * (sph.x + sn.x * 1.4) + vUp * (sph.y + sn.y * 1.4) + toCam * (sz + 0.25));
     col = vColor.rgb * (fxSmokeLight(n, toCam, density) + atmoFlash(vWorld, n));
-    col += vEmissive * vec3(3.2, 1.2, 0.32) * (0.35 + 0.65 * density);
+    col += vEmissive * vec3(2.2, 0.55, 0.08) * density * density;
   } else {
     col = vColor.rgb * (uAmbientSky * 1.3 + uSunColor * 0.3);
   }
@@ -225,10 +225,10 @@ varying float vEnergy;
 // tone mapping keeps fire orange instead of washing it out to peach.
 vec3 fireRamp(float h) {
   h = max(h, 0.0);
-  vec3 c = mix(vec3(0.8, 0.1, 0.012), vec3(1.0, 0.3, 0.03), smoothstep(0.2, 0.55, h));
-  c = mix(c, vec3(1.0, 0.55, 0.12), smoothstep(0.55, 0.95, h));
-  c = mix(c, vec3(1.0, 0.85, 0.6), smoothstep(1.05, 1.45, h));
-  return c * (0.08 + 2.4 * h * h);
+  vec3 c = mix(vec3(0.7, 0.07, 0.006), vec3(1.0, 0.2, 0.012), smoothstep(0.2, 0.55, h));
+  c = mix(c, vec3(1.0, 0.4, 0.05), smoothstep(0.55, 0.95, h));
+  c = mix(c, vec3(1.0, 0.72, 0.4), smoothstep(1.05, 1.45, h));
+  return c * (0.06 + 2.0 * h * h);
 }
 
 void main() {
@@ -245,14 +245,14 @@ void main() {
     float heat = vColor.r;
     float seed = vColor.g;
     float age = vColor.b;
-    vec2 nuv = vUv * 0.7 + vec2(seed * 7.13, seed * 3.71 - age * 0.45);
+    vec2 nuv = vUv * 0.45 + vec2(seed * 7.13, seed * 3.71 - age * 0.35);
     float n1 = texture(uNoise, nuv).r;
-    float n2 = texture(uNoise, nuv * 2.3 + vec2(age * 0.3, -age * 0.8)).b;
-    float turb = n1 * 0.6 + n2 * 0.4;
+    float n2 = texture(uNoise, nuv * 2.1 + vec2(age * 0.3, -age * 0.7)).b;
+    float turb = n1 * 0.75 + n2 * 0.25;
     float shape = clamp(tex.r * (0.45 + 1.1 * turb) - 0.08, 0.0, 1.0);
     float h = heat * (0.2 + 0.5 * shape + 0.65 * tex.a * turb);
     occlusion = shape * vColor.a * ${f(FIRE_OCCLUSION)};
-    col = fireRamp(h) * occlusion;
+    col = fireRamp(h) * (shape * vColor.a * ${f(FIRE_EMIT)});
   } else {
     float across = vUv.y * 2.0 - 1.0;
     float core = pow(max(1.0 - across * across, 0.0), 2.5);

@@ -117,8 +117,10 @@ export interface ParticleStyleDef {
   stretch: number;
 }
 
-/** Opacity of fire sprites (fraction of their mask); emission is scaled by the same factor. */
-export const FIRE_OCCLUSION = 0.45;
+/** Opacity of fire sprites (fraction of their mask): flames hide the sky behind them. */
+export const FIRE_OCCLUSION = 0.72;
+/** Emission of a single fire layer relative to the ramp (a dense fireball converges to ramp × EMIT / OCCLUSION). */
+export const FIRE_EMIT = 0.85;
 
 export const STYLE = {
   SMOKE: 0,
@@ -707,7 +709,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         speed: [0, 0],
         dir: DIR_SPHERE,
         color: [0.95, 0.95, 0.97],
-        alpha: 0.16,
+        alpha: 0.104,
       },
     ],
   },
@@ -766,7 +768,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         offset: 4,
         lobes: 4,
         lobeRadius: 9,
-        delay: [0.05, 0.5],
+        delay: [0.02, 0.35],
         color: SMOKE_BLACK,
         jitter: 0.25,
         alpha: 0.92,
@@ -803,7 +805,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         speed: [0, 0],
         dir: DIR_SPHERE,
         color: [0.95, 0.95, 0.97],
-        alpha: 0.24,
+        alpha: 0.156,
       },
     ],
   },
@@ -863,7 +865,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         offset: 5,
         lobes: 5,
         lobeRadius: 10,
-        delay: [0.05, 0.6],
+        delay: [0.02, 0.4],
         color: SMOKE_BLACK,
         jitter: 0.25,
         alpha: 0.92,
@@ -901,7 +903,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         speed: [0, 0],
         dir: DIR_SPHERE,
         color: [0.95, 0.95, 0.97],
-        alpha: 0.2,
+        alpha: 0.13,
         inherit: 0.5,
       },
     ],
