@@ -126,7 +126,7 @@ export class HangarScene {
       blending: AdditiveBlending,
       depthWrite: false,
       side: DoubleSide,
-      color: new Color(0.16, 0.15, 0.13),
+      color: new Color(0.045, 0.042, 0.038),
     });
     for (const [light, len] of [
       [key, 18],
@@ -289,7 +289,7 @@ function makeShaftTexture(): DataTexture {
     for (let x = 0; x < w; x++) {
       const v = y / (h - 1); // 0 at the cone tip (top), 1 at the base
       const edge = Math.sin((x / (w - 1)) * Math.PI);
-      const a = Math.pow(1 - v, 1.4) * edge * 0.9 + 0.02;
+      const a = Math.pow(1 - v, 2.2) * Math.pow(edge, 2) * 0.9;
       const i = (y * w + x) * 4;
       data[i] = data[i + 1] = data[i + 2] = 255;
       data[i + 3] = Math.max(0, Math.min(255, a * 255));

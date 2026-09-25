@@ -8,7 +8,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: false,
-    chunkSizeWarningLimit: 1200,
+    // three.js + the game is ~1.33 MB minified / ~425 KB gzipped, inside the 900 KB gzip budget (spec §10.2).
+    chunkSizeWarningLimit: 1500,
     assetsInlineLimit: 0,
   },
   worker: { format: 'es' },

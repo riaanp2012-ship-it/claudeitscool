@@ -21,6 +21,7 @@ import type {
   World,
   WorldFactory,
 } from './core/types';
+import { AiPilot } from './ai/pilot';
 import { AIRCRAFT, AIRCRAFT_IDS } from './data/aircraft';
 import { MAP_IDS, MAPS } from './data/maps';
 import { Input } from './input/input';
@@ -791,7 +792,6 @@ export class Game {
       autopilot: async () => {
         const s = this.session;
         if (!s?.player) return;
-        const { AiPilot } = await import('./ai/pilot');
         const pilot = new AiPilot(s.player, 'ace', 99);
         s.sim.pilots.set(s.player, pilot);
       },
