@@ -12,7 +12,7 @@ import {
   type Texture,
 } from 'three';
 import { ATMOSPHERE_GLSL, atmoUniforms } from '../render/atmosphere';
-import { TERRAIN_SAMPLE_GLSL } from './glsl/terrainSample';
+import { CLOUD_SHADOW_GLSL, TERRAIN_SAMPLE_GLSL } from './glsl/terrainSample';
 
 const WATER_VERT = /* glsl */ `
 #include <common>
@@ -36,6 +36,7 @@ const WATER_FRAG = /* glsl */ `
 #include <logdepthbuf_pars_fragment>
 ${ATMOSPHERE_GLSL}
 ${TERRAIN_SAMPLE_GLSL}
+${CLOUD_SHADOW_GLSL}
 uniform sampler2D uWaves;
 uniform float uWaterLevel;
 uniform vec3 uDeep;
@@ -68,7 +69,10 @@ void main() {
     + waveSlope(mat2(0.8, 0.6, -0.6, 0.8) * p / 67.0 + vec2(-t * 0.0047, t * 0.0031)) * 0.35
     + waveSlope(mat2(0.6, -0.8, 0.8, 0.6) * p / 17.0 + vec2(t * 0.011, -t * 0.007)) * 0.22;
   float fade = 1.0 / (1.0 + dist / 2500.0);
-  s *= uWaveStrength * mix(0.25, 1.0, fade);
+  // Gust patterns: large patches of rougher and calmer water, visible from altitude.
+  float gust = texture2D(uWaves, p / 5300.0 + vec2(t * 0.0004, 0.0)).a * 0.6
+    + texture2D(uWaves, mat2(0.8, 0.6, -0.6, 0.8) * p / 14100.0).a * 0.4;
+  s *= uWaveStrength * mix(0.25, 1.0, fade) * mix(0.55, 1.35, smoothstep(0.25, 0.8, gust));
   // Shallow water is calmer.
   s *= mix(0.4, 1.0, smoothstep(0.0, 4.0, depth));
   vec3 N = normalize(vec3(-s.x, 1.0, -s.y));
@@ -83,7 +87,8 @@ void main() {
   // Body color: absorption with depth, lit by sun and sky.
   float absorb = exp(-depth / 7.0);
   vec3 body = mix(uDeep, uShallow, absorb);
-  vec3 light = uSunColor * max(uSunDir.y, 0.0) * atmoGroundShadow(vWorld) + uAmbientSky;
+  float sunLit = atmoGroundShadow(vWorld) * cloudShadow(vec3(p.x, uWaterLevel, p.y));
+  vec3 light = uSunColor * max(uSunDir.y, 0.0) * sunLit + uAmbientSky;
   vec3 col = body * light * RECIPROCAL_PI;
   col = mix(col, skyR, fresnel);
 
@@ -91,7 +96,7 @@ void main() {
   float rough = mix(0.0025, 0.03, 1.0 - fade);
   float mu = max(dot(R, uSunDir), 0.0);
   float lobe = exp(-(1.0 - mu) / rough);
-  col += uSunColor * lobe * uGlint * (0.35 + 0.65 * fade) * atmoGroundShadow(vWorld);
+  col += uSunColor * lobe * uGlint * (0.35 + 0.65 * fade) * sunLit;
 
   // Shoreline foam in the first meters of depth.
   vec4 w = texture2D(uWaves, p / 31.0 + vec2(t * 0.004, 0.0));
@@ -144,6 +149,7 @@ function buildDisc(radius: number, rings: number, segments: number): BufferGeome
 
 export interface WaterOptions {
   waterLevel: number;
+  cloudShadow: Record<string, IUniform>;
   sampleUniforms: Record<string, IUniform>;
   waves: Texture;
   deep: Color;
@@ -165,6 +171,7 @@ export class Water {
       fragmentShader: WATER_FRAG,
       uniforms: {
         ...o.sampleUniforms,
+        ...o.cloudShadow,
         ...atmoUniforms,
         uWaves: { value: o.waves },
         uWaterLevel: { value: o.waterLevel },

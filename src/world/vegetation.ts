@@ -98,11 +98,11 @@ export function treeGeometry(kind: TreeSpecies, leaf: Color): BufferGeometry {
       return mergeParts([{ geo: trunk, color: () => bark }, ...tiers]);
     }
     case 'broadleaf': {
-      const trunk = new CylinderGeometry(0.03, 0.05, 0.5, 5);
-      trunk.translate(0, 0.25, 0);
-      const crown = lumpy(new IcosahedronGeometry(0.3, 1), 3, 0.35);
-      crown.scale(1.05, 0.9, 1.05);
-      crown.translate(0, 0.66, 0);
+      const trunk = new CylinderGeometry(0.03, 0.05, 0.4, 5);
+      trunk.translate(0, 0.2, 0);
+      const crown = lumpy(new IcosahedronGeometry(0.36, 1), 3, 0.45);
+      crown.scale(1.12, 0.92, 1.12);
+      crown.translate(0, 0.63, 0);
       return mergeParts([
         { geo: trunk, color: () => bark },
         { geo: crown, color: shade(leaf, 0.4, 0.4, 0.95), smooth: new Vector3(0, 0.62, 0) },
@@ -225,7 +225,12 @@ export class Vegetation {
         const lu = o.mask[k * 4 + 1]! / 255;
         const road = o.mask[k * 4 + 2]! / 255;
         const urban = o.mask[k * 4 + 3]! / 255;
-        let expected = forest > 0.05 ? perTexel * Math.pow(forest, 1.3) : 0;
+        // Stands and clearings inside woods (no uniform carpets of trees).
+        const stand = forest > 0.05 ? valueNoise((ix * g.cell) / 150, (iz * g.cell) / 150, o.seed + 7) : 0;
+        let expected =
+          forest > 0.05
+            ? perTexel * Math.pow(forest, 1.3) * (0.15 + 1.1 * Math.max(0, Math.min(1, (stand - 0.22) * 2.2)))
+            : 0;
         if (urban < 0.2 && road > 0.3) expected += scatterPerTexel * (0.3 + lu) * (1 - forest);
         if (expected <= 0) continue;
         let count = Math.floor(expected);

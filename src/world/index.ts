@@ -126,12 +126,32 @@ export async function createWorldWith(
   const root = new Group();
   root.name = `world-${def.id}`;
 
+  onProgress(0.75, 'Forming clouds');
+  const clouds = new Clouds({
+    def: def.clouds,
+    seed: def.seed[1] * 7 + 3,
+    sunDir,
+    sampleUniforms,
+    puffTexture: textures.puffs,
+    waterLevel: def.waterLevel,
+    heightAt,
+    scale:
+      q.cloudPuffScale *
+      (options.quality.clouds === 'low' ? 0.6 : options.quality.clouds === 'high' ? 1.2 : 1),
+  });
+  disposables.push(clouds);
+  root.add(clouds.mesh);
+
+  const cloudShadow = clouds.bakeShadow(sunDir, 0.78);
+  disposables.push(cloudShadow.texture);
+
   onProgress(0.76, 'Laying out terrain');
   const palette = def.palette();
   const terrain = new Terrain({
     quality: q,
     bounds,
     sampleUniforms,
+    cloudShadow: cloudShadow.uniforms,
     textures: {
       bakeNear: gen.near.bake.texture,
       bakeFar: gen.far.bake.texture,
@@ -154,6 +174,7 @@ export async function createWorldWith(
 
   const water = new Water({
     waterLevel: def.waterLevel,
+    cloudShadow: cloudShadow.uniforms,
     sampleUniforms,
     waves: textures.water,
     deep: waterColors[def.id]?.deep ?? new Color(0.004, 0.02, 0.03),
@@ -187,22 +208,6 @@ export async function createWorldWith(
   });
   disposables.push(vegetation);
   root.add(...vegetation.meshes);
-
-  onProgress(0.9, 'Forming clouds');
-  const clouds = new Clouds({
-    def: def.clouds,
-    seed: def.seed[1] * 7 + 3,
-    sunDir,
-    sampleUniforms,
-    puffTexture: textures.puffs,
-    waterLevel: def.waterLevel,
-    heightAt,
-    scale:
-      q.cloudPuffScale *
-      (options.quality.clouds === 'low' ? 0.6 : options.quality.clouds === 'high' ? 1.2 : 1),
-  });
-  disposables.push(clouds);
-  root.add(clouds.mesh);
 
   let deck: Deck | null = null;
   if (def.deck) {

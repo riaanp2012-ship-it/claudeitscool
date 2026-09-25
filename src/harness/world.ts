@@ -61,6 +61,7 @@ const veg = params.get('veg')
 const settleFrames = Number(params.get('frames') ?? 4);
 
 const h = createHarness({ readyAfterFrames: Number.POSITIVE_INFINITY, far: 160000 });
+if (params.get('scale')) h.pipeline.setOptions({ renderScale: Number(params.get('scale')) });
 if (view.fov) {
   h.camera.fov = view.fov;
   h.camera.updateProjectionMatrix();
@@ -139,11 +140,44 @@ async function main(): Promise<void> {
   );
   const loadMs = performance.now() - t0;
   h.scene.add(world.root);
+  if (params.get('hide')) {
+    const hide = params.get('hide')!.split(',');
+    world.root.traverse((o) => {
+      if (hide.some((n) => o.name.startsWith(n))) o.visible = false;
+    });
+  }
+  const probes = (params.get('probe') ?? '')
+    .split(';')
+    .filter((v) => v.length > 0)
+    .map((v) => {
+      const [x, z] = v.split(',').map(Number);
+      return { x, z, h: Number(world.heightAt(x ?? 0, z ?? 0).toFixed(1)) };
+    });
   h.scene.environment = world.environment;
   placeCamera(world);
   const heightNs = measureHeightAt(world);
   const flat = runwayFlatness(world);
   const render = measureRender(world);
+  // Warm, steady-state update() cost: the camera drifts and turns a little every call.
+  const bench = { avg: 0, max: 0 };
+  {
+    const base = h.camera.position.clone();
+    const n = 300;
+    let acc = 0;
+    for (let i = 0; i < n; i++) {
+      h.camera.position.set(base.x + i * 1.5, base.y, base.z - i * 0.8);
+      h.camera.rotation.y += 0.002;
+      const a = performance.now();
+      world.update(h.camera, 1 / 60, i / 60);
+      const d = performance.now() - a;
+      if (i >= 60) {
+        acc += d;
+        bench.max = Math.max(bench.max, d);
+      }
+    }
+    bench.avg = acc / (n - 60);
+    placeCamera(world);
+  }
 
   let frames = 0;
   let updAcc = 0;
@@ -160,8 +194,12 @@ async function main(): Promise<void> {
       );
     }
   }
+  let lastFrame = performance.now();
+  let frameMs = 0;
   h.frame((dt, elapsed) => {
     const a = performance.now();
+    frameMs = a - lastFrame;
+    lastFrame = a;
     world.update(h.camera, dt, elapsed);
     const u = performance.now() - a;
     frames++;
@@ -182,6 +220,9 @@ async function main(): Promise<void> {
       triangles: render.triangles,
       updateMsAvg: Number((updAcc / Math.max(frames - 2, 1)).toFixed(3)),
       updateMsMax: Number(updMax.toFixed(3)),
+      frameMs: Math.round(frameMs),
+      updateBenchMsAvg: Number(bench.avg.toFixed(3)),
+      updateBenchMsMax: Number(bench.max.toFixed(3)),
       updateBreakdownMs: sub.map((v) => Number((v / Math.max(frames - 2, 1)).toFixed(3))),
       generationMs: Math.round(stats.generationMs),
       loadMs: Math.round(loadMs),
@@ -193,6 +234,7 @@ async function main(): Promise<void> {
       terrainNodes: stats.terrainNodes,
       minSpawnClearance: Math.round(minSpawnClearance),
       groundTargets: world.groundTargets.length,
+      probes,
     };
     window.__HARNESS_INFO__ = info;
     label.textContent = `${map} / ${viewName}  calls ${info.drawCalls}  tris ${info.triangles}  update ${info.updateMsAvg} ms  gen ${info.generationMs} ms`;

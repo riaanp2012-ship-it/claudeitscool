@@ -1,6 +1,6 @@
 import { ATMOSPHERE_GLSL } from '../render/atmosphere';
 import { NOISE_GLSL } from './glsl/noise';
-import { TERRAIN_SAMPLE_GLSL } from './glsl/terrainSample';
+import { CLOUD_SHADOW_GLSL, TERRAIN_SAMPLE_GLSL } from './glsl/terrainSample';
 
 export const MAX_RUNWAYS = 4;
 export const MAX_TAXI = 40;
@@ -242,6 +242,7 @@ uniform sampler2D uBakeFar;
 uniform sampler2D uMaskNear;
 uniform sampler2D uMaskFar;
 uniform sampler2D uDetail;
+${CLOUD_SHADOW_GLSL}
 uniform float uWaterLevel;
 uniform vec2 uFarFade;
 uniform vec3 uGrass;
@@ -340,12 +341,19 @@ void main() {
   float macroA = texture2D(uDetail, mat2(0.6, 0.8, -0.8, 0.6) * p / 3900.0).r;
   float macroB = texture2D(uDetail, p / 16000.0 + 0.3).r;
   float macro = macroA * 0.6 + macroB * 0.4;
-  float slope = 1.0 - N.y;
+  // Geometric (per-triangle) normal: on cliffs the baked normal is too coarse, so steep faces use the
+  // real triangle slope for both the rock mask and lighting (no sawtooth along steep coastlines).
+  vec3 geoN = normalize(cross(dFdx(vTerrain), dFdy(vTerrain)));
+  geoN *= sign(geoN.y + 1e-6);
+  float geoSlope = 1.0 - geoN.y;
+  float steep = smoothstep(0.42, 0.62, geoSlope) * near;
+  N = normalize(mix(N, geoN, steep * 0.85));
+  float slope = max(1.0 - N.y, geoSlope * steep);
   float above = h - uWaterLevel;
 
   // Base ground: lush in hollows, drier on exposed, sun-facing ground; broad macro variation.
-  float exposure = (ao - 0.75) * 2.0 + max(dot(N.xz, uSunDir.xz), 0.0) * 1.2;
-  float dry = smoothstep(0.3, 0.8, macro * 0.8 + exposure * 0.35 + (d2.r - 0.5) * 0.15);
+  float exposure = max(dot(N.xz, uSunDir.xz), 0.0) * 1.2 - (1.0 - ao) * 1.5;
+  float dry = smoothstep(0.35, 0.85, macro * 0.85 + exposure * 0.22 + (d2.r - 0.5) * 0.08);
   vec3 col = mix(uGrass, uGrassDry, dry);
   col *= 0.88 + 0.24 * mix(d2.r, d1.r, near);
   float dirtW = smoothstep(0.66, 0.85, d2.r * 0.5 + macroA * 0.3 + slope * 1.1);
@@ -389,7 +397,7 @@ void main() {
     vec4 c2 = texture2D(uDetail, mat2(0.6, 0.8, -0.8, 0.6) * p / 83.0);
     float crowns = smoothstep(0.05, 0.5, c1.a) * 0.6 + smoothstep(0.1, 0.6, c2.a) * 0.4;
     vec3 fcol = uForest * (0.62 + 0.55 * crowns) * (0.88 + 0.24 * d2.r) * (0.9 + 0.2 * macroA);
-    canopy = smoothstep(0.0, 0.3, forest);
+    canopy = smoothstep(0.18, 0.42, forest + (c2.r - 0.5) * 0.12);
     col = mix(col, fcol, canopy);
     ao *= 1.0 - 0.3 * canopy * (1.0 - crowns);
     vec3 cn = detailNormal(c2) * 0.6 + detailNormal(c1) * 0.4;
@@ -397,7 +405,9 @@ void main() {
   }
 
   // Beaches and seabed.
-  float beach = (1.0 - smoothstep(uSnowP.z * 0.5, uSnowP.z, above + (d2.r - 0.5) * 2.5)) * (1.0 - smoothstep(0.18, 0.4, slope));
+  // Sand on gentle shores; shingle and wet rock at the foot of cliffs too.
+  float beach = (1.0 - smoothstep(uSnowP.z * 0.5, uSnowP.z, above + (d2.r - 0.5) * 2.5))
+    * max(1.0 - smoothstep(0.18, 0.4, slope), 1.0 - smoothstep(0.8, 2.2, above));
   col = mix(col, uSand * (0.88 + 0.24 * d1.r), beach);
   float wet = 1.0 - smoothstep(-0.2, 0.6, above);
   col *= 1.0 - 0.3 * wet;
@@ -406,7 +416,7 @@ void main() {
   // Settlements and roads.
   col = mix(col, uUrban * (0.8 + 0.4 * d1.a) * (0.85 + 0.3 * d2.r), urban * 0.85);
   float road = band(roadD, uRoadHalfW, aa + 0.5) * step(0.0, above);
-  col = mix(col, vec3(0.085, 0.083, 0.08) * (0.85 + 0.3 * d1.r), road);
+  col = mix(col, vec3(0.115, 0.112, 0.105) * (0.85 + 0.3 * d1.r), road);
 
   // Rock and cliffs with triplanar sampling on steep faces (no stretching).
   float rockW = smoothstep(uSlopeP.x - 0.06, uSlopeP.x + 0.1, slope + (d2.r - 0.5) * 0.12);
@@ -425,6 +435,15 @@ void main() {
     vec3 rc = mix(uRock, uCliff, smoothstep(uSlopeP.y - 0.1, uSlopeP.y + 0.1, slope));
     rc *= (0.72 + 0.5 * tri.r) * (0.85 + 0.3 * fine) * (1.0 - 0.28 * strata);
     rc *= 0.9 + 0.2 * macroB;
+    // Vertical weathering streaks and thin dark seams on steep faces.
+    float streak = mix(
+      texture2D(uDetail, vec2(vTerrain.z / 11.0, vTerrain.y / 55.0)).r,
+      texture2D(uDetail, vec2(vTerrain.x / 11.0, vTerrain.y / 55.0)).r,
+      tw.z / max(tw.x + tw.z, 1e-3));
+    float faceW = smoothstep(0.35, 0.7, slope) * near;
+    rc *= mix(1.0, 0.72 + 0.45 * streak, faceW);
+    float seam = band(fract(h / 7.7 + tri.r * 0.25) - 0.5, 0.05, max(fwidth(h / 7.7), 1e-4));
+    rc *= 1.0 - seam * 0.35 * faceW;
     col = mix(col, rc, rockW);
     vec3 tn = normalize(vec3((tri.g - 0.5) * 2.0, 1.0, (tri.b - 0.5) * 2.0));
     N = normalize(N + (tn - vec3(0.0, 1.0, 0.0)) * rockW * 0.9 * near);
@@ -445,7 +464,7 @@ void main() {
 
   // Lighting (three.js convention: radiance = albedo / PI * irradiance).
   float ndl = max(dot(N, uSunDir), 0.0);
-  float shadow = sunVis * atmoGroundShadow(vWorld);
+  float shadow = sunVis * atmoGroundShadow(vWorld) * cloudShadow(vTerrain);
   vec3 sky = mix(uAmbientGround, uAmbientSky, N.y * 0.5 + 0.5);
   vec3 irradiance = uSunColor * ndl * shadow + sky * ao;
   vec3 color = col * irradiance * RECIPROCAL_PI + col * atmoFlash(vWorld, N);

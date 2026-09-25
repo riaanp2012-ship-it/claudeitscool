@@ -1,5 +1,11 @@
 import {
   CustomBlending,
+  DataTexture,
+  LinearFilter,
+  LinearMipmapLinearFilter,
+  RedFormat,
+  UnsignedByteType,
+  Vector4,
   DynamicDrawUsage,
   Float32BufferAttribute,
   InstancedBufferAttribute,
@@ -39,6 +45,11 @@ void main() {
   center.y -= drop;
   vec3 toCam = cameraPosition - center;
   float d = length(toCam);
+  // Fully faded (camera inside or next to the puff): collapse the card so it costs no fill.
+  if (d < aPuff.w * 0.45) {
+    gl_Position = vec4(0.0, 0.0, 2.0, 1.0);
+    return;
+  }
   vec3 fwd = toCam / max(d, 1e-3);
   vec3 r = cross(vec3(0.0, 1.0, 0.0), fwd);
   float rl = length(r);
@@ -107,13 +118,16 @@ void main() {
   vec3 V = vFwd;
   float ndl = dot(n, uSunDir);
   float diffuse = clamp(ndl * 0.6 + 0.4, 0.0, 1.0);
-  float direct = diffuse * mix(0.35, 1.0, exposure);
+  // Flat grey bases: light falls off toward the cluster base.
+  float lift = smoothstep(vData.z, vData.z + 300.0, vWorld.y);
+  float direct = diffuse * mix(0.3, 1.0, exposure) * mix(0.45, 1.0, lift);
   // Forward scattering through thin edges when looking toward the sun (silver lining).
   float mu = dot(-V, uSunDir);
   float thin = 1.0 - t.b;
   float forward = pow(max(mu, 0.0), 6.0) * thin * 1.6;
   vec3 ambient = mix(uAmbientGround * 1.6 + uAmbientSky * 0.35, uAmbientSky * 1.25, mix(uDarkBase, 1.0, hfrac));
-  vec3 col = uBrightness * (uSunColor * (direct * 1.25 + forward) + ambient * (0.7 + 0.3 * t.b)) * RECIPROCAL_PI * 0.92;
+  ambient *= mix(uDarkBase + 0.2, 1.0, lift);
+  vec3 col = uBrightness * (uSunColor * (direct * 1.45 + forward) + ambient * (0.7 + 0.3 * t.b)) * RECIPROCAL_PI * 0.92;
 
   vec3 ray = vWorld - cameraPosition;
   col = atmoApply(col, ray);
@@ -274,7 +288,8 @@ export class Clouds {
         pz = px * sa + pz * ca;
         px = rx;
         const pr = radius * rng.range(0.28, 0.42) * (1 - 0.35 * f);
-        const py = base + pr * 0.55 + f * height * rng.range(0.85, 1.1);
+        // Base puffs sit low so the flat cut at the base spans nearly their whole width.
+        const py = base + pr * (l === 0 ? 0.2 : 0.55) + f * height * rng.range(0.85, 1.1);
         const ox = px / radius;
         const oy = (py - base - height * 0.35) / Math.max(height, 1);
         const oz = pz / radius;
@@ -336,7 +351,7 @@ export class Clouds {
     this.attrB.needsUpdate = true;
   }
 
-  /** Sorts back to front every few frames or when the camera moved; insertion sort on a nearly sorted order. */
+  /** Sorts back to front every few frames or when the camera moved (shell sort: fast on nearly sorted input). */
   update(camera: PerspectiveCamera): void {
     const e = camera.matrixWorld.elements;
     const cx = e[12]!;
@@ -359,19 +374,72 @@ export class Clouds {
       const pz = p.z - cz;
       keys[i] = -(px * px + py * py + pz * pz);
     }
-    for (let i = 1; i < n; i++) {
-      const k = keys[i]!;
-      const v = order[i]!;
-      let j = i - 1;
-      while (j >= 0 && keys[j]! > k) {
-        keys[j + 1] = keys[j]!;
-        order[j + 1] = order[j]!;
-        j--;
-      }
-      keys[j + 1] = k;
-      order[j + 1] = v;
-    }
+    shellSort(keys, order, n);
     this.writeInstances();
+  }
+
+  /**
+   * Bakes the cumulus field's ground shadow (seen along the sun direction from y = 0) into a small texture.
+   * Clouds are static, so this runs once at load. Returns the uniforms consumed by CLOUD_SHADOW_GLSL.
+   */
+  bakeShadow(sun: Vector3, strength: number): { uniforms: Record<string, IUniform>; texture: DataTexture } {
+    const size = 512;
+    const extent = 84000;
+    const origin = -extent / 2;
+    const data = new Uint8Array(size * size).fill(255);
+    const sy = Math.max(sun.y, 0.05);
+    const kx = sun.x / sy;
+    const kz = sun.z / sy;
+    if (this.clusters.length > 0) {
+      for (let j = 0; j < size; j++) {
+        const z0 = origin + (j + 0.5) * (extent / size);
+        for (let i = 0; i < size; i++) {
+          const x0 = origin + (i + 0.5) * (extent / size);
+          let optical = 0;
+          for (let k = 0; k < 5; k++) {
+            const y = 1300 + k * 280;
+            optical += this.clusterDensity(x0 + kx * y, y, z0 + kz * y);
+          }
+          data[j * size + i] = Math.round(255 * Math.exp(-optical * 1.1));
+        }
+      }
+    }
+    const texture = new DataTexture(data, size, size, RedFormat, UnsignedByteType);
+    texture.minFilter = LinearMipmapLinearFilter;
+    texture.magFilter = LinearFilter;
+    texture.generateMipmaps = true;
+    texture.needsUpdate = true;
+    return {
+      texture,
+      uniforms: {
+        uCloudShadow: { value: texture },
+        uCloudBox: {
+          value: new Vector4(origin, origin, 1 / extent, this.clusters.length > 0 ? strength : 0),
+        },
+      },
+    };
+  }
+
+  /** Smooth cluster-level density (ellipsoids), cheap enough for the shadow bake. */
+  private clusterDensity(x: number, y: number, z: number): number {
+    const list = this.grid.get(Math.floor(x / GRID_CELL) * 100003 + Math.floor(z / GRID_CELL));
+    if (!list) return 0;
+    let best = 0;
+    for (let li = 0; li < list.length; li++) {
+      const c = this.clusters[list[li]!]!;
+      const hy = (c.top - c.base) * 0.5;
+      const cy = c.base + hy;
+      const r = c.radius * 0.8;
+      const qx = (x - c.x) / r;
+      const qy = (y - cy) / hy;
+      const qz = (z - c.z) / r;
+      const q = qx * qx + qy * qy + qz * qz;
+      if (q < 1) {
+        const v = 1 - q;
+        if (v > best) best = v;
+      }
+    }
+    return best;
   }
 
   /** 0..1 density: 1 deep inside a puff. */
@@ -403,5 +471,27 @@ export class Clouds {
   dispose(): void {
     this.geometry.dispose();
     this.material.dispose();
+  }
+}
+
+const GAPS = [701, 301, 132, 57, 23, 10, 4, 1];
+
+/** In-place shell sort of keys (ascending) carrying order along. Zero allocation. */
+export function shellSort(keys: Float32Array, order: Uint32Array, n: number): void {
+  for (let g = 0; g < GAPS.length; g++) {
+    const gap = GAPS[g]!;
+    if (gap >= n) continue;
+    for (let i = gap; i < n; i++) {
+      const k = keys[i]!;
+      const v = order[i]!;
+      let j = i;
+      while (j >= gap && keys[j - gap]! > k) {
+        keys[j] = keys[j - gap]!;
+        order[j] = order[j - gap]!;
+        j -= gap;
+      }
+      keys[j] = k;
+      order[j] = v;
+    }
   }
 }

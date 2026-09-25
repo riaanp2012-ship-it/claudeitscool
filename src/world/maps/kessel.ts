@@ -58,9 +58,9 @@ const ISLANDS: [number, number, number, number, number, number, number][] = [
   [12600, 9300, 2300, 1350, -15, 245, 0.5],
   [-13200, 11100, 1850, 1100, 10, 195, 0.4],
   [-600, 12600, 1000, 620, 70, 95, 0.2],
-  [-1850, -1650, 170, 140, 0, 38, 1.0],
-  [1350, -1480, 130, 110, 30, 26, 1.0],
-  [7300, 1500, 230, 170, 60, 48, 0.8],
+  [-1850, -1650, 170, 140, 0, 64, 1.0],
+  [1350, -1480, 130, 110, 30, 48, 1.0],
+  [7300, 1500, 230, 170, 60, 72, 0.9],
 ];
 
 const AIR_ELEV = 92;
@@ -317,10 +317,11 @@ vec4 mapSample(vec2 p) {
   float dIsle = -1e9;
   float Hi = 0.0;
   float cliffI = 0.0;
+  vec2 pi = pw + nzWarp(p / 900.0, 170.0, 3);
   for (int i = 0; i < ${ISLANDS.length}; i++) {
     vec4 a = uIsleA[i];
     vec4 b = uIsleB[i];
-    vec2 r = pw - a.xy;
+    vec2 r = pi - a.xy;
     float ca = cos(b.x);
     float sa = sin(b.x);
     vec2 lp = vec2(ca * r.x + sa * r.y, -sa * r.x + ca * r.y);
@@ -706,7 +707,7 @@ export const KESSEL: MapDef = {
   flats: FLATS,
   airbases: [AIRBASE],
   roads: ROADS,
-  roadWidth: 7,
+  roadWidth: 6,
   urban: [
     [HARBOR.x, HARBOR.z - 280, 620],
     [HARBOR.x + 450, HARBOR.z - 1600, 380],
