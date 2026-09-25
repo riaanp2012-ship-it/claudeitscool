@@ -5,6 +5,28 @@ import { test as base, expect, type Page } from '@playwright/test';
  */
 export const test = base.extend<{ problems: string[] }>({
   problems: async ({ page }, use) => {
+    // Headless Chromium renders with SwiftShader (software); the Low preset keeps tests practical.
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('splash1.settings')) {
+        localStorage.setItem(
+          'splash1.settings',
+          JSON.stringify({
+            graphics: {
+              preset: 'low',
+              renderScale: 0.5,
+              adaptive: false,
+              shadows: 'off',
+              clouds: 'low',
+              terrain: 'low',
+              vegetation: 0.2,
+              effects: 'low',
+              antialias: false,
+              bloom: false,
+            },
+          }),
+        );
+      }
+    });
     const problems: string[] = [];
     page.on('console', (m) => {
       if (m.type() === 'error' || m.type() === 'warning') problems.push(`[console.${m.type()}] ${m.text()}`);

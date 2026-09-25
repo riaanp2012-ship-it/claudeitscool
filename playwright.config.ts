@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 960, height: 540 },
     launchOptions: {
       ...(executablePath ? { executablePath } : {}),
       args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'],
