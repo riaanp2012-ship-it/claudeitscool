@@ -36,7 +36,7 @@ export const SIGNALS: Readonly<Record<ColorblindMode, Signals>> = {
 
 export interface HudPalette {
   primary: string;
-  /** Secondary symbology and labels (70 %). */
+  /** Secondary symbology and labels (80 %). */
   dim: string;
   /** Backgrounds of scopes, faint rings (35 %). */
   faint: string;
@@ -80,7 +80,7 @@ export function mixRgba(a: string, b: string, t: number, alpha: number): string 
 /** The halo is a darkened, slightly tinted version of the HUD color so it reads as depth, not a box. */
 function haloFor(hex: string): string {
   const [r, g, b] = hexToRgb(hex);
-  return 'rgba(' + Math.round(r * 0.06) + ',' + Math.round(g * 0.08) + ',' + Math.round(b * 0.07) + ',0.62)';
+  return 'rgba(' + Math.round(r * 0.06) + ',' + Math.round(g * 0.08) + ',' + Math.round(b * 0.07) + ',0.7)';
 }
 
 export function buildPalette(color: HudColorName, mode: ColorblindMode): HudPalette {
@@ -88,7 +88,7 @@ export function buildPalette(color: HudColorName, mode: ColorblindMode): HudPale
   const s = SIGNALS[mode] ?? SIGNALS.off;
   return {
     primary,
-    dim: rgba(primary, 0.7),
+    dim: rgba(primary, 0.8),
     faint: rgba(primary, 0.35),
     halo: haloFor(primary),
     backing: rgba(INK_900, 0.5),

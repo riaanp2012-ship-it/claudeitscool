@@ -146,7 +146,8 @@ describe('rolling digit drums', () => {
   it('rolls the prefix only during the last step before a carry', () => {
     drumSplit(459.95, 10, 1, out);
     expect(out.prefix).toBe(45);
-    expect(out.carry).toBeGreaterThan(0.9);
+    expect(out.carry).toBeCloseTo(detent(0.95), 6);
+    expect(out.carry).toBeGreaterThan(0.5);
     drumSplit(8563, 100, 20, out);
     expect(out.prefix).toBe(85);
     expect(out.roll).toBe(3);

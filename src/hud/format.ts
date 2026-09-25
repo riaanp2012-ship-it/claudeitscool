@@ -179,7 +179,7 @@ export interface DrumSplit {
 }
 
 /** Fraction of each drum step spent rolling; the rest of the step the digit rests centered (detent). */
-export const DRUM_ROLL_SPAN = 0.3;
+export const DRUM_ROLL_SPAN = 0.25;
 
 /** Detent easing: 0 while frac < 1 - span, then a smooth roll to 1. */
 export function detent(frac: number, span = DRUM_ROLL_SPAN): number {

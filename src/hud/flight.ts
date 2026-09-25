@@ -66,9 +66,11 @@ export function drawLadder(dc: DrawContext): void {
   if (n === 0) return;
 
   const lw = L.line;
-  const gap = Math.round(40 * S);
-  const long = Math.round(62 * S);
-  const short = Math.round(34 * S);
+  // The cockpit glass is narrower: scale the rung geometry so the numbers stay inside the window.
+  const k2 = dc.state.view === 'cockpit' ? 0.8 : 1;
+  const gap = Math.round(40 * k2 * S);
+  const long = Math.round(62 * k2 * S);
+  const short = Math.round(34 * k2 * S);
   const tick = Math.round(8 * S);
   const horizonHalf = Math.round(260 * S);
 

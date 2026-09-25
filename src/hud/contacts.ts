@@ -188,9 +188,11 @@ function drawSelected(dc: DrawContext, c: HudContact): void {
   }
 
   // Label above, range and closure to the right, cue below.
-  const tx = x + half + 8 * S;
+  // Text clears both the brackets and the widest lock ring (34 units at the start of a lock).
+  const clear = lock > 0 && lock < 1 ? Math.max(half, 34 * S) : half;
+  const tx = x + clear + 8 * S;
   p.textStyle(f.labelM, color, 'center');
-  p.text(c.label, x, y - half - 11 * S);
+  p.text(c.label, x, y - clear - 12 * S);
   const units = st.units;
   p.textStyle(f.monoS, color, 'left');
   const rangeStr = s.range.get(rangeKey(distanceIn(fin(c.distance), units)));
