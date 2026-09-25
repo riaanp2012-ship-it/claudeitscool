@@ -224,7 +224,7 @@ function build(ctx: BuildContext): void {
     sillT: 0.08,
     n: 2,
     frameless: true,
-    tint: 0xd8bd78,
+    tint: 0xcbb98a,
     maxOpen: 40,
   });
   const eye: Vec3 = [0, 1.02, 4.6];

@@ -66,7 +66,7 @@ void main() {
     float dry = smoothstep( 0.6, 1.0, thr ) * ( 1.0 - ab );
     float power = ab + dry * 0.22;
     float outer = step( kind, 0.5 );
-    float lenR = mix( mix( 1.2, 2.0, dry ), mix( 7.0, 3.6, 1.0 - outer ), ab ) * mix( 1.0, 1.4, outer * ab );
+    float lenR = mix( mix( 1.2, 2.0, dry ), mix( 5.2, 8.0, outer ), ab ) * mix( 1.0, 1.25, outer * ab );
     float len = r0 * lenR * ( 0.93 + 0.12 * flick ) * step( 0.002, power );
     float r = outer > 0.5
       ? r0 * ( 1.0 + 0.28 * t ) * sqrt( max( 1.0 - pow( t, 2.2 ), 0.0 ) )
@@ -140,13 +140,15 @@ void main() {
     float body = pow( facing, 1.8 ) * smoothstep( 0.0, 0.05, t ) * pow( max( 1.0 - t, 0.0 ), 1.2 );
     float streak = 0.8 + 0.2 * sin( t * 26.0 - time * 44.0 + vFx.w * 3.0 );
     if ( kind < 0.5 ) {
-      vec3 hot = vec3( 3.2, 1.35, 0.38 );
-      vec3 cool = vec3( 1.1, 0.22, 0.04 );
-      col = mix( hot, cool, smoothstep( 0.15, 0.9, t ) ) * body * streak * 0.9;
+      vec3 hot = mix( vec3( 2.6, 1.9, 1.1 ), vec3( 3.0, 1.2, 0.32 ), smoothstep( 0.05, 0.35, t ) );
+      vec3 cool = vec3( 1.0, 0.2, 0.035 );
+      col = mix( hot, cool, smoothstep( 0.3, 0.95, t ) ) * body * streak * 0.75;
     } else {
-      float diamonds = pow( 0.5 + 0.5 * cos( t * 6.2832 * 4.0 - 0.7 ), 12.0 ) * ( 1.0 - smoothstep( 0.05, 0.8, t ) );
-      vec3 core = mix( vec3( 1.6, 2.2, 4.8 ), vec3( 3.8, 2.4, 1.2 ), smoothstep( 0.1, 0.7, t ) );
-      col = ( core * 0.8 + vec3( 7.0, 5.6, 3.6 ) * diamonds ) * body * streak;
+      // shock diamonds: bright nodes along the core, fading downstream
+      float cell = t * 3.6 - 0.15;
+      float node = pow( 0.5 + 0.5 * cos( cell * 6.2832 ), 10.0 ) * ( 1.0 - smoothstep( 0.1, 0.85, t ) );
+      vec3 core = mix( vec3( 2.2, 3.0, 6.5 ), vec3( 4.2, 2.8, 1.5 ), smoothstep( 0.2, 0.8, t ) );
+      col = ( core * 1.1 + vec3( 9.0, 8.0, 6.0 ) * node ) * body * streak;
     }
   } else if ( kind < 2.5 ) {
     float r = vFx.y;
@@ -212,7 +214,7 @@ glassSpec += ( clearcoatSpecularDirect + clearcoatSpecularIndirect ) * material.
 #endif
 float glassF = pow( 1.0 - saturate( dot( geometryNormal, geometryViewDir ) ), 4.0 );
 float glassA = mix( diffuseColor.a, 0.92, glassF );
-gl_FragColor = vec4( totalDiffuse * glassA + glassSpec, glassA );`,
+gl_FragColor = vec4( totalDiffuse * 0.3 * glassA + glassSpec, glassA );`,
       )
       .replace(
         'gl_FragColor.rgb = atmoApply( gl_FragColor.rgb, vAtmoRay );',

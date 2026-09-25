@@ -134,7 +134,7 @@ export function intake(ctx: BuildContext, d: IntakeDef): void {
   else b.panel = PANEL.plain;
   gridSurface(b, R, rimRows + 1, nU, { wrap: true, creases, flip: true });
   // duct
-  b.style(PAINT.interior, 0xb8bab6, PANEL.plain);
+  b.style(PAINT.interior, 0x8c8f8b, PANEL.plain);
   const ductZs = stationList(0, 1, ctx.lod === 0 ? 0.2 : 0.5);
   const ductP = new Float64Array(ductZs.length * nU * 3);
   const fanRing = new Float64Array(nU * 2);
@@ -156,7 +156,7 @@ export function intake(ctx: BuildContext, d: IntakeDef): void {
     wrap: true,
     creases,
     flip: true,
-    aoAt: (i) => lerp(1, 0.12, Math.pow(ductZs[i]!, 0.6)),
+    aoAt: (i) => lerp(0.85, 0.08, Math.pow(ductZs[i]!, 0.5)),
   });
   // fan face
   const last = (ductZs.length - 1) * nU * 3;
@@ -223,7 +223,7 @@ export function roundNozzle(ctx: BuildContext, d: RoundNozzleDef): void {
     b.bone2 = nb;
     const N = d.petals;
     const rows = 4;
-    b.style(PAINT.metal, 0x77736c, PANEL.plain);
+    b.style(PAINT.metal, 0x57534d, PANEL.plain);
     for (let p = 0; p < N; p++) {
       const off = p % 2 === 1 ? 0.007 : 0;
       const a0 = ((p - 0.08) / N) * Math.PI * 2;
@@ -243,7 +243,7 @@ export function roundNozzle(ctx: BuildContext, d: RoundNozzleDef): void {
       gridSurface(b, P, rows + 1, 3, { weightAt: (i) => i / rows });
     }
     // exit rim and inner liner (hot)
-    b.style(PAINT.nozzle, 0x6a6660, PANEL.plain);
+    b.style(PAINT.nozzle, 0x3f3c38, PANEL.plain);
     const liner: [number, number][] = [
       [d.z1 - L * 1.25, d.r1 * 0.72],
       [d.z1 - L * 0.55, d.r1 * 0.82],
