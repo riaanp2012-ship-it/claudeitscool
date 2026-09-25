@@ -571,8 +571,12 @@ export class Session {
     const c = p.controls;
     const direct = cfg.controls.scheme === 'direct' || input.lastDevice === 'gamepad';
     const a = input.analog;
-    const stickActive = Math.abs(a.pitch) > 0.04 || Math.abs(a.roll) > 0.04;
     this.rig.mouseAim = !direct;
+    // Keyboard: W/S climb and dive, A/D turn (the autopilot banks into the turn), Q/E roll directly.
+    const keyTurn = (input.isHeld('turnRight') ? 1 : 0) - (input.isHeld('turnLeft') ? 1 : 0);
+    let keyPitch = (input.isHeld('pitchUp') ? 1 : 0) - (input.isHeld('pitchDown') ? 1 : 0);
+    if (cfg.controls.invertPitch) keyPitch = -keyPitch;
+    const keyRoll = (input.isHeld('rollRight') ? 1 : 0) - (input.isHeld('rollLeft') ? 1 : 0);
     if (!direct && !freeLook) {
       if (input.pointerLocked)
         this.rig.applyAimDelta(
@@ -581,7 +585,7 @@ export class Session {
           cfg.controls.sensitivity,
           cfg.controls.invertPitch,
         );
-      else if (input.cursor.inside) {
+      else if (input.cursor.inside && keyTurn === 0 && keyPitch === 0) {
         // Without pointer lock the cursor acts like a stick for the aim point.
         const dz = (v: number) => (Math.abs(v) < 0.06 ? 0 : (v - Math.sign(v) * 0.06) / 0.94);
         this.rig.applyAimDelta(
@@ -591,16 +595,23 @@ export class Session {
           cfg.controls.invertPitch,
         );
       }
+      if (keyTurn !== 0 || keyPitch !== 0) {
+        const rate = 0.75 * cfg.controls.sensitivity;
+        this.rig.steerAim(keyTurn * rate * dt, keyPitch * rate * 0.8 * dt, p.body.forward(_v));
+      }
     }
-    if (direct || stickActive) {
+    if (direct) {
       c.pitch = a.pitch;
       c.roll = a.roll;
       c.yaw = a.yaw;
-      if (!direct) {
-        // Keyboard override in mouse aim: re-center the aim on the nose so releasing keys doesn't snap.
-        this.rig.aimQuat.copy(p.renderQuaternion);
-        this.rig.aimDir.set(0, 0, -1).applyQuaternion(p.renderQuaternion);
-      }
+    } else if (keyRoll !== 0) {
+      // Rolling by hand (barrel rolls): fly the stick directly and keep the aim on the nose,
+      // so releasing Q/E never snaps the aircraft back.
+      c.roll = keyRoll;
+      c.pitch = keyPitch;
+      c.yaw = a.yaw;
+      this.rig.aimQuat.copy(p.renderQuaternion);
+      this.rig.aimDir.set(0, 0, -1).applyQuaternion(p.renderQuaternion);
     } else {
       this.instructor.update(p.body, this.rig.aimDir, PLAYER_GAINS, c);
       if (Math.abs(a.yaw) > 0) c.yaw = clamp(c.yaw + a.yaw, -1, 1);

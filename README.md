@@ -23,9 +23,11 @@ To make a production build: `npm run build`, then serve the `dist/` folder with 
 
 | Action | Keyboard / mouse | Gamepad |
 |---|---|---|
-| Steer (mouse aim) | Move the mouse | Left stick |
-| Pitch / roll (direct) | S / W, A / D | Left stick |
-| Yaw | Q / E | LB / RB |
+| Steer | Move the mouse | Left stick |
+| Turn left / right | A / D | Left stick |
+| Climb / dive | W / S | Left stick |
+| Roll left / right (barrel rolls) | Q / E | Left stick |
+| Yaw | — | LB / RB |
 | Throttle up (hold at 100% for afterburner) / down | Shift / X | RT / LT |
 | Guns | Left mouse button | X |
 | Fire selected weapon | Right mouse button or Space | A |

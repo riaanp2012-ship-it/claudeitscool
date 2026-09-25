@@ -136,8 +136,11 @@ export interface BindingRow {
 
 /** Default controls (spec §5.12). Shown read-only in Settings > Controls. */
 export const DEFAULT_BINDINGS: readonly BindingRow[] = [
-  { action: 'Aim / steer', keyboard: 'Mouse, or W S A D', gamepad: 'Left stick' },
-  { action: 'Yaw', keyboard: 'Q / E', gamepad: 'LB / RB' },
+  { action: 'Steer', keyboard: 'Mouse', gamepad: 'Left stick' },
+  { action: 'Turn left / right', keyboard: 'A / D', gamepad: 'Left stick' },
+  { action: 'Climb / dive', keyboard: 'W / S', gamepad: 'Left stick' },
+  { action: 'Roll left / right', keyboard: 'Q / E', gamepad: 'Left stick' },
+  { action: 'Yaw', keyboard: 'None', gamepad: 'LB / RB' },
   { action: 'Throttle up / down', keyboard: 'Shift / X', gamepad: 'RT / LT' },
   { action: 'Guns', keyboard: 'Left mouse', gamepad: 'X (hold)' },
   { action: 'Fire missile', keyboard: 'Right mouse / Space', gamepad: 'A' },

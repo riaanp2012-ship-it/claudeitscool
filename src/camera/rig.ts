@@ -102,6 +102,37 @@ export class CameraRig {
     this.aimDir.set(0, 0, -1).applyQuaternion(this.aimQuat);
   }
 
+  /**
+   * Keyboard steering (WASD): turns the aim around the world vertical (so turns stay level) and pitches it
+   * around the rig's right axis. The aim is held within `maxOff` of the nose, so holding a key gives a
+   * steady maximum-rate turn instead of an aim point that runs away behind the aircraft.
+   */
+  steerAim(turn: number, pitch: number, nose: Vector3, maxOff = 1.13): void {
+    if (turn !== 0) {
+      _q.setFromAxisAngle(WORLD_UP, -turn);
+      this.aimQuat.premultiply(_q);
+    }
+    if (pitch !== 0) {
+      this.rigAxes();
+      _q2.setFromAxisAngle(_right, pitch);
+      this.aimQuat.premultiply(_q2);
+    }
+    this.aimQuat.normalize();
+    _fwd.set(0, 0, -1).applyQuaternion(this.aimQuat);
+    const off = Math.acos(clamp(_fwd.dot(nose), -1, 1));
+    if (off > maxOff) {
+      // Rotate the nose toward the aim by exactly maxOff.
+      _v.crossVectors(nose, _fwd);
+      if (_v.lengthSq() < 1e-10) _v.set(0, 1, 0);
+      _v.normalize();
+      _fwd.copy(nose).applyAxisAngle(_v, maxOff);
+      this.rigAxes();
+      _m.lookAt(_pos.set(0, 0, 0), _fwd, Math.abs(_fwd.y) > 0.9 ? _up : WORLD_UP);
+      this.aimQuat.setFromRotationMatrix(_m);
+    }
+    this.aimDir.set(0, 0, -1).applyQuaternion(this.aimQuat);
+  }
+
   private rigAxes(): void {
     _up.set(0, 1, 0).applyQuaternion(this.rigQuat);
     _right.set(1, 0, 0).applyQuaternion(this.rigQuat);

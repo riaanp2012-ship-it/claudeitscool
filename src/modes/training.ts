@@ -332,12 +332,12 @@ export const LESSONS: LessonDef[] = [
       },
       {
         say: 'Roll into sixty degrees of left bank.',
-        hint: 'Bank 60° left (move the mouse left, or {rollLeft})',
+        hint: 'Bank 60° left: hold {turnLeft} or move the mouse left',
         check: (s) => bank(s) < -55 * DEG,
       },
       {
         say: 'Good. Now sixty degrees right.',
-        hint: 'Bank 60° right ({rollRight})',
+        hint: 'Bank 60° right: hold {turnRight}',
         check: (s) => bank(s) > 55 * DEG,
       },
       {

@@ -10,6 +10,8 @@ import { clamp } from '../core/math';
 export type ActionId =
   | 'pitchUp'
   | 'pitchDown'
+  | 'turnLeft'
+  | 'turnRight'
   | 'rollLeft'
   | 'rollRight'
   | 'yawLeft'
@@ -38,8 +40,10 @@ export type ActionId =
   | 'perf';
 
 export const ACTION_LABELS: Record<ActionId, string> = {
-  pitchUp: 'Pitch up',
-  pitchDown: 'Pitch down',
+  pitchUp: 'Climb (nose up)',
+  pitchDown: 'Dive (nose down)',
+  turnLeft: 'Turn left',
+  turnRight: 'Turn right',
   rollLeft: 'Roll left',
   rollRight: 'Roll right',
   yawLeft: 'Yaw left',
@@ -70,12 +74,15 @@ export const ACTION_LABELS: Record<ActionId, string> = {
 
 /** Keyboard codes, 'Mouse0/1/2' for buttons. */
 export const DEFAULT_BINDINGS: Record<ActionId, readonly string[]> = {
-  pitchUp: ['KeyS'],
-  pitchDown: ['KeyW'],
-  rollLeft: ['KeyA'],
-  rollRight: ['KeyD'],
-  yawLeft: ['KeyQ'],
-  yawRight: ['KeyE'],
+  // WASD steers: W climbs, S dives, A/D turn (the jet banks into the turn by itself).
+  pitchUp: ['KeyW'],
+  pitchDown: ['KeyS'],
+  turnLeft: ['KeyA'],
+  turnRight: ['KeyD'],
+  rollLeft: ['KeyQ'],
+  rollRight: ['KeyE'],
+  yawLeft: [],
+  yawRight: [],
   throttleUp: ['ShiftLeft', 'ShiftRight'],
   throttleDown: ['KeyX'],
   gun: ['Mouse0'],
@@ -315,7 +322,8 @@ export class Input {
     // Keyboard axes
     const k = (a: ActionId) => (this.held.get(a) ? 1 : 0);
     let pitch = k('pitchUp') - k('pitchDown');
-    let roll = k('rollRight') - k('rollLeft');
+    // In direct control the turn keys act as roll; in mouse aim the session steers the aim with them.
+    let roll = k('rollRight') - k('rollLeft') + k('turnRight') - k('turnLeft');
     const yaw = k('yawRight') - k('yawLeft');
     let throttleAxis = 0;
     let lookX = 0;
