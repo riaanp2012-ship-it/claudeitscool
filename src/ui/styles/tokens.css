@@ -1,0 +1,57 @@
+/* Design tokens (spec §8.2). Colors, spacing, radius and motion come only from these. */
+:root {
+  --ink-900: #0a0c0d;
+  --ink-800: #111416;
+  --ink-700: #1a1e21;
+  --line: #2a3034;
+  --bone: #e9e5d9;
+  --muted: #8c938e;
+  --dim: #5a615d;
+  --signal: #ff6a1a; /* international orange: selection bar and the primary CTA only */
+  --hud-green: #9df2b4;
+  --hud-amber: #ffc24b;
+  --hud-white: #eaf2ee;
+  --friend: #5ab8ff;
+  --foe: #ff4d3d;
+  --ok: #5bd6a0;
+  --warn: #ffc24b;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius: 2px;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-fast: 120ms;
+  --t-base: 180ms;
+  --t-slow: 320ms;
+}
+
+/*
+ * UI-internal variables derived from the tokens above (fonts from §8.3, the screen cross-fade from §8.4,
+ * translucent panel fills mixed from ink tokens). No new colors are introduced here.
+ */
+.s1-ui {
+  --font-label: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --t-screen: 250ms;
+  --stagger: 30ms;
+  --fill-900: color-mix(in srgb, var(--ink-900) 84%, transparent);
+  --fill-800: color-mix(in srgb, var(--ink-800) 88%, transparent);
+  --fill-sel: color-mix(in srgb, var(--ink-700) 92%, transparent);
+  --scrim: color-mix(in srgb, var(--ink-900) 90%, transparent);
+  --scrim-soft: color-mix(in srgb, var(--ink-900) 62%, transparent);
+  --medal-gold: var(--hud-amber);
+  --medal-silver: color-mix(in srgb, var(--bone) 70%, var(--muted));
+  --medal-bronze: color-mix(in srgb, var(--warn) 48%, var(--dim));
+  --row-h: 48px;
+  --item-h: 56px;
+}
+
+.s1-ui[data-compact] {
+  --row-h: 36px;
+  --item-h: 44px;
+}

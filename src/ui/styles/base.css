@@ -1,0 +1,650 @@
+/* Root, typography, frame grid, header/footer chrome, motion, tooltip and toasts. */
+
+.s1-ui {
+  position: absolute;
+  inset: 0;
+  zoom: var(--s1-zoom, 1);
+  overflow: hidden;
+  pointer-events: none;
+  color: var(--bone);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+  font-kerning: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  -webkit-user-select: none;
+  opacity: 0;
+  transition: opacity var(--t-slow) var(--ease-out);
+}
+
+.s1-ui.is-ready {
+  opacity: 1;
+}
+
+.s1-ui *,
+.s1-ui *::before,
+.s1-ui *::after {
+  box-sizing: border-box;
+}
+
+.s1-ui button {
+  font: inherit;
+  color: inherit;
+  margin: 0;
+}
+
+.s1-ui :focus {
+  outline: none;
+}
+
+.s1-ui h1,
+.s1-ui h2,
+.s1-ui h3,
+.s1-ui p,
+.s1-ui ol,
+.s1-ui ul,
+.s1-ui dl,
+.s1-ui dd {
+  margin: 0;
+  padding: 0;
+}
+
+.s1-ui ol,
+.s1-ui ul {
+  list-style: none;
+}
+
+/* ─── Type roles (scale 12 / 14 / 16 / 20 / 28 / 40 / 64) ─────────────────────── */
+
+.s1-label {
+  font-family: var(--font-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.s1-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.s1-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.s1-display {
+  font-family: var(--font-label);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.s1-body-text {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 24px;
+  color: var(--bone);
+  text-wrap: pretty;
+}
+
+.s1-small {
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+/* ─── Screens and frame ────────────────────────────────────────────────────────── */
+
+.s1-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.s1-screen {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity var(--t-screen) var(--ease-out);
+}
+
+.s1-screen.is-in {
+  opacity: 1;
+}
+
+.s1-screen.is-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.s1-frame {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--s1-frame-left, 0px);
+  width: var(--s1-frame-w, 100%);
+  padding: var(--space-12) var(--space-12) var(--space-8);
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  column-gap: var(--space-6);
+}
+
+[data-compact] .s1-frame {
+  padding: var(--space-8) var(--space-8) var(--space-6);
+}
+
+[data-narrow] .s1-frame {
+  column-gap: var(--space-4);
+}
+
+/* Left-weighted scrim: keeps the menu column readable while the scene stays the hero. */
+.s1-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    var(--scrim) 0,
+    var(--fill-900) calc(var(--s1-frame-left, 0px) + var(--s1-frame-w, 100%) * 0.34),
+    transparent calc(var(--s1-frame-left, 0px) + var(--s1-frame-w, 100%) * 0.6)
+  );
+}
+
+.s1-scrim--full {
+  background: color-mix(in srgb, var(--ink-900) 78%, transparent);
+}
+
+.s1-scrim--bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 40%;
+  background: linear-gradient(0deg, var(--fill-900), transparent);
+}
+
+/* ─── Header ───────────────────────────────────────────────────────────────────── */
+
+.s1-head {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: auto auto;
+  align-items: end;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+}
+
+.s1-head::before,
+.s1-head::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  width: 1px;
+  height: var(--space-2);
+  background: var(--muted);
+}
+
+.s1-head::before {
+  left: 0;
+}
+
+.s1-head::after {
+  right: 0;
+}
+
+.s1-head__code {
+  grid-column: 1 / span 8;
+  grid-row: 1;
+  margin-bottom: var(--space-2);
+}
+
+.s1-head__title {
+  grid-column: 1 / span 8;
+  grid-row: 2;
+  font-size: 40px;
+  line-height: 48px;
+}
+
+.s1-head__meta {
+  grid-column: 9 / -1;
+  grid-row: 1 / span 2;
+  justify-self: end;
+  align-self: end;
+  text-align: right;
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+[data-compact] .s1-head__title {
+  font-size: 28px;
+  line-height: 32px;
+}
+
+[data-compact] .s1-head {
+  padding-bottom: var(--space-3);
+}
+
+/* ─── Body ─────────────────────────────────────────────────────────────────────── */
+
+.s1-body {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  padding: var(--space-6) 0;
+}
+
+[data-compact] .s1-body {
+  padding: var(--space-4) 0;
+}
+
+.s1-scroll {
+  position: relative;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+  overscroll-behavior: contain;
+}
+
+/* ─── Footer and key hints ─────────────────────────────────────────────────────── */
+
+.s1-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  position: relative;
+  min-height: calc(48px + var(--space-4));
+}
+
+.s1-foot__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.s1-hints {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-6);
+  row-gap: var(--space-2);
+  min-width: 0;
+}
+
+.s1-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.s1-hint__keys {
+  display: inline-flex;
+  gap: var(--space-1);
+}
+
+.s1-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 var(--space-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--fill-800);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--bone);
+}
+
+.s1-key--pad {
+  border-radius: 50%;
+  width: 24px;
+  padding: 0;
+}
+
+.s1-key--wide {
+  border-radius: var(--radius);
+  width: auto;
+  padding: 0 var(--space-1);
+}
+
+.s1-key .s1-chev {
+  width: 10px;
+  height: 10px;
+}
+
+.s1-ui[data-device='gamepad'] .s1-kb,
+.s1-ui[data-device='keyboard'] .s1-pad {
+  display: none;
+}
+
+/* ─── Texture: brackets, registration marks, rules ─────────────────────────────── */
+
+.s1-brackets {
+  position: relative;
+}
+
+.s1-brackets::before,
+.s1-brackets::after {
+  content: '';
+  position: absolute;
+  width: var(--space-3);
+  height: var(--space-3);
+  pointer-events: none;
+}
+
+.s1-brackets::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1px solid var(--bone);
+  border-left: 1px solid var(--bone);
+}
+
+.s1-brackets::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 1px solid var(--bone);
+  border-bottom: 1px solid var(--bone);
+}
+
+.s1-reg {
+  position: absolute;
+  width: var(--space-4);
+  height: var(--space-4);
+  pointer-events: none;
+}
+
+.s1-reg::before,
+.s1-reg::after {
+  content: '';
+  position: absolute;
+  background: var(--muted);
+}
+
+.s1-reg::before {
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.s1-reg::after {
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.s1-rule {
+  height: 1px;
+  background: var(--line);
+}
+
+.s1-panel {
+  background: var(--fill-900);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-6);
+  min-width: 0;
+}
+
+[data-compact] .s1-panel {
+  padding: var(--space-4);
+}
+
+.s1-section-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.s1-section-title::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--line);
+}
+
+/* ─── Motion: items enter with 8 px travel and a fade, 30 ms apart ─────────────── */
+
+@keyframes s1-enter {
+  from {
+    opacity: 0;
+    transform: translateY(var(--space-2));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes s1-enter-x {
+  from {
+    opacity: 0;
+    transform: translateX(var(--space-2));
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.s1-screen.is-in .s1-in {
+  animation: s1-enter var(--t-base) var(--ease-out) backwards;
+  animation-delay: calc(var(--i, 0) * var(--stagger));
+}
+
+@keyframes s1-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ─── Selection bar (signal orange; slides between items) ──────────────────────── */
+
+.s1-barhost {
+  position: relative;
+}
+
+.s1-selbar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 1px;
+  background: var(--signal);
+  transform-origin: 0 0;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1;
+  transition:
+    transform var(--t-base) var(--ease-out),
+    opacity var(--t-fast) var(--ease-out);
+}
+
+.s1-selbar.is-on {
+  opacity: 1;
+}
+
+.s1-selbar.is-instant {
+  transition: none;
+}
+
+/* ─── Tooltip ──────────────────────────────────────────────────────────────────── */
+
+.s1-tip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 320px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--ink-800);
+  border: 1px solid var(--muted);
+  border-radius: var(--radius);
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--bone);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--t-fast) var(--ease-out);
+  z-index: 50;
+}
+
+.s1-tip.is-on {
+  opacity: 1;
+}
+
+.s1-tip::before {
+  content: 'UNAVAILABLE';
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: var(--space-1);
+}
+
+.s1-tip[data-kind='info']::before {
+  content: 'NOTE';
+}
+
+/* ─── Toasts (max 3, top right, never take input) ──────────────────────────────── */
+
+.s1-toasts {
+  position: absolute;
+  top: var(--space-8);
+  right: calc(var(--s1-frame-left, 0px) + var(--space-8));
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  pointer-events: none;
+  z-index: 40;
+}
+
+.s1-toast {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
+  background: var(--fill-800);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--muted);
+  border-radius: var(--radius);
+  animation: s1-enter-x var(--t-base) var(--ease-out) backwards;
+  transition:
+    opacity var(--t-base) var(--ease-out),
+    transform var(--t-base) var(--ease-out);
+}
+
+.s1-toast.is-out {
+  opacity: 0;
+  transform: translateX(var(--space-2));
+}
+
+.s1-toast__glyph {
+  grid-row: 1 / span 2;
+  width: 10px;
+  height: 10px;
+  margin-top: 3px;
+  background: var(--muted);
+}
+
+.s1-toast__kind {
+  color: var(--muted);
+}
+
+.s1-toast__text {
+  grid-column: 2;
+  text-wrap: pretty;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--bone);
+  overflow-wrap: anywhere;
+}
+
+.s1-toast[data-kind='warn'] {
+  border-left-color: var(--warn);
+}
+
+.s1-toast[data-kind='warn'] .s1-toast__glyph {
+  background: var(--warn);
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+
+.s1-toast[data-kind='warn'] .s1-toast__kind {
+  color: var(--warn);
+}
+
+.s1-toast[data-kind='success'] {
+  border-left-color: var(--ok);
+}
+
+.s1-toast[data-kind='success'] .s1-toast__glyph {
+  background: var(--ok);
+  transform: rotate(45deg) scale(0.8);
+}
+
+.s1-toast[data-kind='success'] .s1-toast__kind {
+  color: var(--ok);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s1-screen.is-in .s1-in,
+  .s1-toast {
+    animation: none;
+  }
+
+  .s1-selbar,
+  .s1-screen {
+    transition: none;
+  }
+}
