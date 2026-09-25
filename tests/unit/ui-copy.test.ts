@@ -34,7 +34,7 @@ describe('menu copy (spec §8.7, ZD-M03)', () => {
 
   it('lists every default control from the spec', () => {
     expect(DEFAULT_BINDINGS.map((b) => b.action)).toContain('Pause');
-    expect(DEFAULT_BINDINGS).toHaveLength(14);
+    expect(DEFAULT_BINDINGS).toHaveLength(17);
   });
 
   it('credits every bundled typeface and library with its license', () => {
