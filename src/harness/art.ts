@@ -6,6 +6,7 @@ import {
   Group,
   HemisphereLight,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
   PCFShadowMap,
   PMREMGenerator,
@@ -48,14 +49,14 @@ renderer.shadowMap.type = PCFShadowMap;
 
 // ── lighting from the shared atmosphere
 const sunDir = atmoUniforms.uSunDir.value.clone();
-const sun = new DirectionalLight(new Color(1, 0.95, 0.88), 3.1);
+const sun = new DirectionalLight(new Color(1, 0.95, 0.88), 3.6);
 sun.position.copy(sunDir).multiplyScalar(200);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
-const hemi = new HemisphereLight(atmoUniforms.uAmbientSky.value, atmoUniforms.uAmbientGround.value, 0.9);
+const hemi = new HemisphereLight(atmoUniforms.uAmbientSky.value, atmoUniforms.uAmbientGround.value, 0.35);
 scene.add(hemi);
 
 // ── sky dome using the shared atmosphere
@@ -96,23 +97,31 @@ sky.renderOrder = -10;
 sky.frustumCulled = false;
 scene.add(sky);
 
-// ── environment map: studio room for ground views, sky for flight
+// ── environment map: the shared sky over a dark apron (flight: open sky), like World.environment
 const pmrem = new PMREMGenerator(renderer);
-let env: Texture;
-if (view === 'flight') {
-  const envScene = new Scene();
-  envScene.add(sky.clone());
-  env = pmrem.fromScene(envScene, 0.02).texture;
-} else {
-  env = pmrem.fromScene(new RoomEnvironment(), 0.03).texture;
+const envScene = new Scene();
+envScene.add(sky.clone());
+if (view !== 'flight') {
+  const floor = new Mesh(
+    new CircleGeometry(400, 32),
+    new MeshBasicMaterial({ color: new Color(0.09, 0.09, 0.09) }),
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -2;
+  envScene.add(floor);
+  const room = new RoomEnvironment();
+  room.scale.setScalar(0.02);
+  room.position.y = 30;
+  envScene.add(room);
 }
+const env: Texture = pmrem.fromScene(envScene, 0.02).texture;
 scene.environment = env;
-scene.environmentIntensity = view === 'flight' ? 0.9 : 0.55;
+scene.environmentIntensity = 0.85;
 
 // ── neutral concrete apron
 function ground(y: number): void {
   const mat = patchAtmosphere(
-    new MeshStandardMaterial({ color: 0x77787a, roughness: 0.94, metalness: 0 }),
+    new MeshStandardMaterial({ color: 0x626466, roughness: 0.94, metalness: 0 }),
     'harness-apron',
     (shader: WebGLProgramParametersWithUniforms) => {
       shader.vertexShader = shader.vertexShader
@@ -131,14 +140,15 @@ float apHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 4
         .replace(
           '#include <color_fragment>',
           `#include <color_fragment>
-vec2 ap = vApron.xz / 6.0;
+vec2 ap = vApron.xz / 5.0;
 vec2 cell = floor( ap );
 vec2 f = fract( ap );
 vec2 fw = fwidth( ap );
-vec2 jl = smoothstep( fw * 1.5, vec2( 0.0 ), min( f, 1.0 - f ) - 0.004 );
-float joint = max( jl.x, jl.y ) * ( 1.0 - smoothstep( 0.02, 0.1, max( fw.x, fw.y ) ) );
-diffuseColor.rgb *= 0.92 + 0.12 * apHash( cell );
-diffuseColor.rgb *= 1.0 - 0.45 * joint;`,
+vec2 jl = smoothstep( fw * 1.5, vec2( 0.0 ), min( f, 1.0 - f ) - 0.002 );
+float joint = max( jl.x, jl.y ) * ( 1.0 - smoothstep( 0.01, 0.06, max( fw.x, fw.y ) ) );
+float stain = sin( vApron.x * 0.13 + sin( vApron.z * 0.21 ) * 2.0 ) * sin( vApron.z * 0.17 + 1.3 );
+diffuseColor.rgb *= 0.94 + 0.08 * apHash( cell ) + 0.05 * stain;
+diffuseColor.rgb *= 1.0 - 0.3 * joint;`,
         );
     },
   );

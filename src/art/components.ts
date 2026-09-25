@@ -982,7 +982,7 @@ export function store(
   index: number,
 ): void {
   const bone = ctx.rig.add({ role: 'store', pivot: [...pos], parent: parentBone, param: index });
-  ctx.meta.hardpoints.push({ position: [...pos], kind, internal });
+  ctx.meta.hardpoints[index] = { position: [...pos], kind, internal };
   if (internal) return;
   const b = ctx.body;
   const v0 = b.vertexCount;

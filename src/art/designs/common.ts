@@ -1,9 +1,20 @@
-import type { HitCapsule } from '../../core/types';
+import type { HardpointKind, HitCapsule } from '../../core/types';
 import { gridSurface, PAINT, PANEL, PART } from '../builder';
 import type { BuildContext, DecalDef } from '../context';
 import { ROOT_BONE, type Vec3 } from '../rig';
-import { makeSection, sectionPoint, stationList, tube, type Profile } from '../shapes';
-import { planformAt, surfacePoint, type SurfaceDef } from '../surfaces';
+import {
+  lathe,
+  loft,
+  makeSection,
+  sectionPoint,
+  stationList,
+  superRing,
+  tube,
+  type Profile,
+  type RingFn,
+} from '../shapes';
+import { pylon, store } from '../components';
+import { planformAt, skinPoint, surfacePoint, type SurfaceDef } from '../surfaces';
 
 const DEG = Math.PI / 180;
 
@@ -285,5 +296,153 @@ export function markings(ctx: BuildContext, a: MarkingAnchors): void {
         depth: 3,
       });
     }
+  }
+}
+
+/** Lofted main skin with LOD-appropriate resolution. */
+export function skin(
+  ctx: BuildContext,
+  prof: Profile,
+  z0: number,
+  z1: number,
+  o: {
+    nU?: number;
+    capStart?: 'none' | 'flat' | 'point';
+    capEnd?: 'none' | 'flat' | 'point';
+    fine?: number;
+    ring?: (nU: number) => RingFn;
+    creases?: (nU: number) => number[];
+    part?: number;
+  } = {},
+): void {
+  const b = ctx.body;
+  b.style(PAINT.livery, 0xffffff, PANEL.body);
+  b.part = o.part ?? PART.fuselage;
+  b.bone = ROOT_BONE;
+  const base = o.nU ?? 40;
+  const nU = ctx.lod === 0 ? base : Math.max(12, Math.round((base * 0.35) / 4) * 4);
+  const zs = stationList(
+    z0,
+    z1,
+    ctx.lod === 0 ? 0.22 : 0.9,
+    ctx.lod === 0 ? 0.07 : 0.35,
+    o.fine ?? 1.2,
+    0.25,
+  );
+  loft(b, {
+    zs,
+    nU,
+    ring: o.ring ? o.ring(nU) : superRing(prof, nU),
+    creases: o.creases ? o.creases(nU) : undefined,
+    capStart: o.capStart ?? 'point',
+    capEnd: o.capEnd ?? 'flat',
+  });
+}
+
+/** Engine casing or nacelle (body of revolution) around an axis; profile [z, r] front to back. */
+export function casing(
+  ctx: BuildContext,
+  x: number,
+  y: number,
+  prof: [number, number][],
+  mirror: boolean,
+): void {
+  const b = ctx.body;
+  b.style(PAINT.livery, 0xffffff, PANEL.body);
+  b.part = PART.engine;
+  b.bone = ROOT_BONE;
+  const v0 = b.vertexCount;
+  const i0 = b.idx.length;
+  lathe(b, prof, ctx.lod === 0 ? 28 : 10, { cx: x, cy: y, uv: true });
+  if (mirror) b.mirror(v0, i0, ctx.rig.mirrorFn, (p) => p);
+}
+
+/**
+ * Faceted ring for stealth bodies: the superellipse is sampled at its corner parameters and joined with
+ * straight edges, giving flat panels with hard chines. `per` points per edge; creases at the corners.
+ */
+export function facetRing(prof: Profile, corners: readonly number[], per: number): RingFn {
+  const n = corners.length;
+  const sec = makeSection();
+  const tmp = new Float64Array(2);
+  const pts = new Float64Array(n * 2);
+  return (z, out) => {
+    prof.at(z, sec);
+    for (let c = 0; c < n; c++) {
+      sectionPoint(sec, corners[c]!, tmp, 0);
+      pts[c * 2] = tmp[0]!;
+      pts[c * 2 + 1] = tmp[1]!;
+    }
+    for (let c = 0; c < n; c++) {
+      const d = (c + 1) % n;
+      for (let k = 0; k < per; k++) {
+        const t = k / per;
+        out[(c * per + k) * 2] = pts[c * 2]! + (pts[d * 2]! - pts[c * 2]!) * t;
+        out[(c * per + k) * 2 + 1] = pts[c * 2 + 1]! + (pts[d * 2 + 1]! - pts[c * 2 + 1]!) * t;
+      }
+    }
+  };
+}
+
+/** Static skin panel (closed bay door) proud of the skin by a few millimetres, optional sawtooth ends. */
+export function skinPanel(
+  ctx: BuildContext,
+  prof: Profile,
+  d: { z0: number; z1: number; t0: number; t1: number; zig?: number },
+): void {
+  if (ctx.lod !== 0) return;
+  const b = ctx.body;
+  b.bone = ROOT_BONE;
+  b.part = PART.fuselage;
+  b.style(PAINT.livery, 0xffffff, PANEL.plain);
+  const nJ = 9;
+  const nI = 5;
+  const sec = makeSection();
+  const tmp = new Float64Array(2);
+  const tmp2 = new Float64Array(2);
+  const P = new Float64Array(nI * nJ * 3);
+  for (let i = 0; i < nI; i++) {
+    for (let j = 0; j < nJ; j++) {
+      const edge = i === 0 ? 1 : i === nI - 1 ? -1 : 0;
+      const zig = d.zig && j % 2 === 1 ? d.zig * edge : 0;
+      const z = d.z0 + ((d.z1 - d.z0) * i) / (nI - 1) + zig;
+      const t = d.t0 + ((d.t1 - d.t0) * j) / (nJ - 1);
+      prof.at(z, sec);
+      sectionPoint(sec, t, tmp, 0);
+      sectionPoint(sec, t + 0.002, tmp2, 0);
+      const tx = tmp2[0]! - tmp[0]!;
+      const ty = tmp2[1]! - tmp[1]!;
+      const l = Math.hypot(tx, ty) || 1;
+      const o = (i * nJ + j) * 3;
+      P[o] = tmp[0]! + (-ty / l) * 0.006;
+      P[o + 1] = tmp[1]! + (tx / l) * 0.006;
+      P[o + 2] = z;
+    }
+  }
+  gridSurface(b, P, nI, nJ);
+}
+
+/** Wing-mounted pylon + store at span s of a (right) surface, mirrored to the left with the given indices. */
+export function wingStore(
+  ctx: BuildContext,
+  wing: SurfaceDef,
+  s: number,
+  z: number,
+  drop: number,
+  kind: HardpointKind,
+  indices: [left: number, right: number],
+  bones: [left: number, right: number] = [ROOT_BONE, ROOT_BONE],
+  opts: { pylon?: boolean; dx?: number } = {},
+): void {
+  const top: Vec3 = [0, 0, 0];
+  skinPoint(wing, s, 0.5, -1, top);
+  const x = top[0] + (opts.dx ?? 0);
+  for (const [k, sx] of [
+    [0, -1],
+    [1, 1],
+  ] as const) {
+    const pos: Vec3 = [sx * x, top[1] - drop, z];
+    if (opts.pylon !== false) pylon(ctx, kind, pos, top[1] + 0.04, bones[k]);
+    store(ctx, kind, pos, bones[k], false, indices[k]);
   }
 }
