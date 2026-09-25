@@ -13,6 +13,13 @@
   hangar menu scene; perf overlay (F3); adaptive resolution; debug API for tests.
 - Tests: 20 unit tests (flight, guidance, flares, bullets, AI soak at 3 skills, SAM engagement).
 
+## Integrated and published
+- All six worker modules merged (world, art, fx, audio, HUD, UI); `src/main.ts` wires them into the game shell.
+- Gates green: typecheck, lint, format, guard, 212 unit tests, production build, e2e (boot, free flight,
+  instant action with 5 menu→mission→menu cycles and no GPU-resource growth).
+- Playable build published: https://claude.ai/artifact/VkqcDTmhPeXpDUxBGfDj7F (build via `npm run build` +
+  `node scripts/make-artifact.mjs`).
+
 ## In progress (parallel workers)
 - World (terrain, water, sky, clouds, vegetation, structures, maps), aircraft art, effects, audio, HUD, menus.
 - Reviewer agent auditing the orchestrator code.
