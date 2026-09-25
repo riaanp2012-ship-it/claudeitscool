@@ -55,3 +55,8 @@
   --row-h: 36px;
   --item-h: 44px;
 }
+
+.s1-ui[data-short] {
+  --row-h: 32px;
+  --item-h: 36px;
+}

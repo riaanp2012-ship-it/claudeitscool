@@ -442,6 +442,7 @@ async function run(): Promise<void> {
         onInstantAction: noop,
         onFreeFlight: noop,
         onTraining: noop,
+        onSurvival: noop,
         onHangar: noop,
         onSettings: noop,
         onCredits: noop,
@@ -584,7 +585,8 @@ function audit(): { offscreen: string[]; scrolled: string[]; clipped: string[] }
       const cs = getComputedStyle(e);
       if (cs.overflowY !== 'visible' && e.scrollHeight > e.clientHeight + 1) scrolled.push(name(e));
       const leaf = e.children.length === 0 && Boolean(e.textContent) && cs.display !== 'inline';
-      if (leaf && e.scrollWidth > e.clientWidth + 1) clipped.push(name(e));
+      const control = e.matches('.s1-seg, .s1-select, .s1-step, .s1-foot__actions, .s1-hints, .s1-tabs');
+      if ((leaf || control) && e.scrollWidth > e.clientWidth + 1) clipped.push(name(e));
     }
   }
   return { offscreen: offscreen.slice(0, 8), scrolled: scrolled.slice(0, 8), clipped: clipped.slice(0, 8) };

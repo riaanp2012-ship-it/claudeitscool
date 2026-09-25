@@ -324,6 +324,7 @@ export class UiImpl implements Ui {
     s.setProperty('--s1-frame-w', `${L.frameWidth.toFixed(2)}px`);
     s.setProperty('--s1-frame-left', `${L.frameLeft.toFixed(2)}px`);
     this.root.toggleAttribute('data-compact', L.compact);
+    this.root.toggleAttribute('data-short', L.short);
     this.root.toggleAttribute('data-narrow', L.narrow);
     this.current?.relayout();
     this.resume?.relayout();

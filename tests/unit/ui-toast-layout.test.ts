@@ -72,9 +72,14 @@ describe('computeLayout', () => {
     expect(computeLayout(1920, 1080, 0.8).zoom).toBeCloseTo(0.8);
   });
 
-  it('flags compact heights', () => {
+  it('flags compact and short heights', () => {
     expect(computeLayout(1280, 720, 1).compact).toBe(true);
+    expect(computeLayout(1280, 720, 1).short).toBe(false);
     expect(computeLayout(1920, 1080, 1).compact).toBe(false);
+    const small = computeLayout(960, 540, 1);
+    expect(small.short).toBe(true);
+    expect(small.height).toBeGreaterThanOrEqual(600 - 1e-6);
+    expect(small.width).toBeGreaterThanOrEqual(1024 - 1e-6);
   });
 });
 
