@@ -265,7 +265,7 @@ float coastProfile(float d, float H, float cliff, float n) {
   float plat = mix(70.0, 26.0, cliff);
   if (d < plat) return mix(-0.6, 1.4, d / plat);
   float x = d - plat;
-  float w = mix(900.0, 32.0, cliff);
+  float w = mix(900.0, 58.0, cliff);
   float t = smoothstep(0.0, w, x);
   t = mix(t, sqrt(t), cliff);
   return mix(1.4, H, t);
@@ -279,15 +279,21 @@ vec4 mapSample(vec2 p) {
   vec2 vd = valleyDist(p + nzWarp(p / 1500.0, 160.0, 3));
   float dMain = coastSd(pw);
   float inland = max(dMain, 0.0);
-  vec3 hillsD = nzFbmD(p / 4300.0 + 5.0, 6);
+  // Chalk downs: broad swells cut by a network of dry valleys (coombes), rising to hills in the north.
+  vec3 hillsD = nzFbmD(p / 5200.0 + 5.0, 6);
   float downs = hillsD.x * 0.5 + 0.5;
-  float eroded = nzEroded(p / 2600.0 - 3.0, 7);
+  float eroded = nzEroded(p / 2400.0 - 3.0, 8);
+  vec2 cw = p + nzWarp(p / 2600.0, 520.0, 3);
+  float coombe = pow(nzRidged(cw / 3900.0 + 7.0, 3), 2.4);
   float north = smoothstep(7000.0, 21000.0, inland);
   float ridges = nzRidged(pw / 8500.0 + 1.7, 7);
-  float Hm = 62.0 + 26.0 * smoothstep(0.0, 1.0, n + 0.5) + inland * 0.0045 + downs * 95.0 + eroded * 34.0
-    + north * (ridges * 620.0 + 120.0);
+  float Hm = 52.0 + 22.0 * n + inland * 0.006 + downs * 150.0 + eroded * 48.0
+    - coombe * 62.0 * smoothstep(150.0, 900.0, inland) + north * (ridges * 620.0 + 120.0);
+  // The airfield sits on a naturally level stretch of the downs.
+  float fieldMask = smoothstep(2900.0, 1100.0, distance(p, vec2(${(MAIN.x + 300).toFixed(1)}, ${(MAIN.z - 150).toFixed(1)})));
+  Hm = mix(Hm, ${AIR_ELEV.toFixed(1)} + eroded * 10.0 + downs * 12.0 - 6.0, fieldMask);
   // Drainage gullies aligned with the downhill direction.
-  vec2 grad = hillsD.yz * (95.0 * 0.5 / 4300.0) + vec2(0.0, 0.0045);
+  vec2 grad = hillsD.yz * (150.0 * 0.5 / 5200.0) + vec2(0.0, 0.006);
   float gs = length(grad);
   vec2 flow = -grad / max(gs, 1e-5);
   float gully = nzGully(p / 190.0, flow).x * 0.7 + nzGully(p / 75.0, flow).x * 0.3;
@@ -323,8 +329,9 @@ vec4 mapSample(vec2 p) {
     if (di > dIsle) {
       dIsle = di;
       float core = clamp(1.0 - e, 0.0, 1.0);
-      float lumps = nzEroded(p / 1400.0 + a.xy / 997.0, 6) * 0.5 + 0.5;
-      Hi = b.y * pow(smoothstep(0.0, 1.0, core), 0.7) * (0.55 + 0.6 * lumps) + 8.0;
+      float lumps = nzEroded(p / 1400.0 + a.xy / 997.0, 7) * 0.5 + 0.5;
+      float spine = nzRidged(pw / 1900.0 + a.xy / 1733.0, 5);
+      Hi = b.y * pow(smoothstep(0.0, 1.0, core), 0.55) * (0.45 + 0.55 * lumps + 0.35 * spine) + 6.0;
       cliffI = b.z;
     }
   }
@@ -684,8 +691,8 @@ export const KESSEL: MapDef = {
   atmosphere: () => ({
     sunDirection: new Vector3(-0.593, 0.545, 0.593),
     sunColor: srgb(0xfff4e6).multiplyScalar(3.3),
-    zenithColor: srgb(0x2e5fa8).multiplyScalar(1.05),
-    horizonColor: srgb(0xb4c6da),
+    zenithColor: srgb(0x1b4d9e),
+    horizonColor: srgb(0xa6bcd4),
     groundHazeColor: srgb(0x9aa8b6),
     ambientSky: srgb(0x9fb4d0).multiplyScalar(0.85),
     ambientGround: srgb(0x5a5a4a).multiplyScalar(0.6),
@@ -723,8 +730,8 @@ export const KESSEL: MapDef = {
     snowLine: 9000,
     snowFade: 100,
     beachHeight: 2.6,
-    rockSlope: 0.4,
-    cliffSlope: 0.55,
+    rockSlope: 0.36,
+    cliffSlope: 0.42,
     fieldSize: 190,
     fieldMode: 0,
     strata: 0.15,
@@ -747,11 +754,11 @@ export const KESSEL: MapDef = {
     scatter: 60,
   }),
   clouds: {
-    count: 46,
-    base: [1350, 1650],
-    radius: [480, 1150],
-    height: [320, 780],
-    spread: 30000,
+    count: 72,
+    base: [1350, 1600],
+    radius: [650, 1500],
+    height: [380, 1000],
+    spread: 34000,
     brightness: 1,
     darkBase: 0.5,
   },

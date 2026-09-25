@@ -105,11 +105,18 @@ void main() {
   vec2 g = floor(gl_FragCoord.xy);
   float cell = uDom.z;
   float h = fetchH(g);
-  float hl = fetchH(g - vec2(1.0, 0.0));
-  float hr = fetchH(g + vec2(1.0, 0.0));
-  float hd = fetchH(g - vec2(0.0, 1.0));
-  float hu = fetchH(g + vec2(0.0, 1.0));
-  vec3 n = normalize(vec3(hl - hr, 2.0 * cell, hd - hu));
+  // Sobel gradient: smoother normals than plain central differences (less stair-stepping on cliffs).
+  float h00 = fetchH(g + vec2(-1.0, -1.0));
+  float h10 = fetchH(g + vec2(0.0, -1.0));
+  float h20 = fetchH(g + vec2(1.0, -1.0));
+  float h01 = fetchH(g + vec2(-1.0, 0.0));
+  float h21 = fetchH(g + vec2(1.0, 0.0));
+  float h02 = fetchH(g + vec2(-1.0, 1.0));
+  float h12 = fetchH(g + vec2(0.0, 1.0));
+  float h22 = fetchH(g + vec2(1.0, 1.0));
+  float gx = (h20 + 2.0 * h21 + h22) - (h00 + 2.0 * h01 + h02);
+  float gz = (h02 + 2.0 * h12 + h22) - (h00 + 2.0 * h10 + h20);
+  vec3 n = normalize(vec3(-gx, 8.0 * cell, -gz));
 
   // Sun visibility: march toward the sun, soft penumbra from the angular clearance.
   vec2 sdir = normalize(uSun.xz + vec2(1e-5));

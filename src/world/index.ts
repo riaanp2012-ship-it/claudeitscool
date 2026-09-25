@@ -65,6 +65,10 @@ export interface WorldStats {
   treeInstances: number;
   puffs: number;
   generationMs: number;
+  /** Last update() cost per subsystem (ms). */
+  terrainMs: number;
+  cloudsMs: number;
+  treesMs: number;
 }
 
 /** World plus diagnostics for harness pages. */
@@ -251,6 +255,7 @@ export async function createWorldWith(
   onProgress(1, 'Ready');
 
   const lastCam = new Vector3();
+  const timings = new Float32Array(3);
   const world: WorldInternal = {
     map: def.id,
     root,
@@ -283,16 +288,23 @@ export async function createWorldWith(
     update(camera: PerspectiveCamera, _dt: number, elapsed: number) {
       atmoUniforms.uTime.value = elapsed;
       camera.updateMatrixWorld();
+      const t0 = performance.now();
       terrain.update(camera);
+      const t1 = performance.now();
       sky.update(camera);
       water.update(camera);
       clouds.update(camera);
+      const t2 = performance.now();
       vegetation.update(camera);
+      const t3 = performance.now();
       if (deck) deck.update(camera);
       sun.color.copy(atmoUniforms.uSunColor.value);
       hemi.color.copy(atmoUniforms.uAmbientSky.value);
       hemi.groundColor.copy(atmoUniforms.uAmbientGround.value);
       lastCam.setFromMatrixPosition(camera.matrixWorld);
+      timings[0] = t1 - t0;
+      timings[1] = t2 - t1;
+      timings[2] = t3 - t2;
     },
     stats() {
       return {
@@ -301,6 +313,9 @@ export async function createWorldWith(
         treeInstances: vegetation.instanceCounts,
         puffs: clouds.puffCount,
         generationMs,
+        terrainMs: timings[0]!,
+        cloudsMs: timings[1]!,
+        treesMs: timings[2]!,
       };
     },
     dispose() {

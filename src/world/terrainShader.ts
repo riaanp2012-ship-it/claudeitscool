@@ -343,12 +343,13 @@ void main() {
   float slope = 1.0 - N.y;
   float above = h - uWaterLevel;
 
-  // Base ground: grass drying out with macro variation and sun-facing slopes.
-  float dry = smoothstep(0.35, 0.75, macro + (d2.r - 0.5) * 0.35 + max(dot(N.xz, uSunDir.xz), 0.0) * 0.4);
+  // Base ground: lush in hollows, drier on exposed, sun-facing ground; broad macro variation.
+  float exposure = (ao - 0.75) * 2.0 + max(dot(N.xz, uSunDir.xz), 0.0) * 1.2;
+  float dry = smoothstep(0.3, 0.8, macro * 0.8 + exposure * 0.35 + (d2.r - 0.5) * 0.15);
   vec3 col = mix(uGrass, uGrassDry, dry);
-  col *= 0.82 + 0.36 * mix(d2.r, d1.r, 0.5);
-  float dirtW = smoothstep(0.62, 0.8, d2.r * 0.7 + macroA * 0.5 + slope * 0.8);
-  col = mix(col, uDirt * (0.85 + 0.3 * d1.r), dirtW * 0.7);
+  col *= 0.88 + 0.24 * mix(d2.r, d1.r, near);
+  float dirtW = smoothstep(0.66, 0.85, d2.r * 0.5 + macroA * 0.3 + slope * 1.1);
+  col = mix(col, uDirt * (0.85 + 0.3 * d1.r), dirtW * 0.6);
 
   // Land use (fields, playa or meadows).
   if (landuse > 0.01) {
@@ -362,10 +363,13 @@ void main() {
       vec2 rd = vec2(cos(rowDir), sin(rowDir));
       float rows = dashes(dot(p, rd), 1.2, 3.2, aa);
       fcol *= 1.0 - 0.12 * rows * near * step(0.3, fc.x);
-      float hedge = 1.0 - smoothstep(1.5, 4.5 + aa * 0.5, fc.y);
-      hedge *= step(0.25, nzHash1(floor(p / 60.0) + fc.x));
-      fcol = mix(fcol, uForest * 0.9, hedge * 0.85);
-      fcol *= 0.9 + 0.2 * d1.r;
+      // Headlands: a slightly different tone around each field's edge.
+      fcol = mix(fcol, mix(uGrass, uGrassDry, 0.3), band(fc.y, 7.0, aa) * 0.35);
+      fcol *= 0.9 + 0.2 * d1.r + 0.08 * (d2.r - 0.5);
+      // Hedgerows: thin box-filtered lines that fade to their true coverage with distance.
+      float hedge = band(fc.y, 2.2, aa);
+      hedge *= step(0.28, nzHash1(floor(p / 55.0) + fc.x));
+      fcol = mix(fcol, uForest * (1.05 + 0.3 * d1.r), hedge);
     } else if (mode < 1.5) {
       // Playa: pale cracked clay with faint polygon cracks near the camera.
       float cracks = 1.0 - smoothstep(0.02, 0.08, d3.a);
@@ -378,12 +382,18 @@ void main() {
     col = mix(col, fcol, landuse);
   }
 
-  // Forest canopy: clumped crowns with self-shading.
+  // Forest canopy: clumped crowns at two scales with self-shading and a bumpy canopy normal.
+  float canopy = 0.0;
   if (forest > 0.01) {
-    float crowns = smoothstep(0.1, 0.55, texture2D(uDetail, p / 23.0).a);
-    vec3 fcol = uForest * (0.6 + 0.55 * crowns) * (0.85 + 0.3 * d2.r) * (0.9 + 0.2 * macroA);
-    col = mix(col, fcol, smoothstep(0.0, 0.35, forest));
-    ao *= 1.0 - 0.25 * forest * (1.0 - crowns);
+    vec4 c1 = texture2D(uDetail, p / 19.0);
+    vec4 c2 = texture2D(uDetail, mat2(0.6, 0.8, -0.8, 0.6) * p / 83.0);
+    float crowns = smoothstep(0.05, 0.5, c1.a) * 0.6 + smoothstep(0.1, 0.6, c2.a) * 0.4;
+    vec3 fcol = uForest * (0.62 + 0.55 * crowns) * (0.88 + 0.24 * d2.r) * (0.9 + 0.2 * macroA);
+    canopy = smoothstep(0.0, 0.3, forest);
+    col = mix(col, fcol, canopy);
+    ao *= 1.0 - 0.3 * canopy * (1.0 - crowns);
+    vec3 cn = detailNormal(c2) * 0.6 + detailNormal(c1) * 0.4;
+    N = normalize(N + (cn - vec3(0.0, 1.0, 0.0)) * canopy * 1.4);
   }
 
   // Beaches and seabed.

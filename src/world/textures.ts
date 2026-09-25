@@ -106,8 +106,8 @@ void main() {
   vec3 lump = nzFbmD(q * 1.6 + off, 4);
   vec3 fine = nzFbmD(q * 5.0 + off * 1.3, 4);
   float r = length(q);
-  float edge = r + lump.x * 0.22 + fine.x * 0.08;
-  float cover = 1.0 - smoothstep(0.52, 0.95, edge);
+  float edge = r + lump.x * 0.28 + fine.x * 0.1;
+  float cover = 1.0 - smoothstep(0.5, 0.86, edge);
   cover *= smoothstep(1.0, 0.9, r);
   float z = sqrt(max(1.0 - min(r * r, 1.0), 0.0));
   vec3 n = normalize(vec3(q + (lump.yz * 0.08 + fine.yz * 0.03), z + 0.25));

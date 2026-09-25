@@ -148,6 +148,7 @@ async function main(): Promise<void> {
   let frames = 0;
   let updAcc = 0;
   let updMax = 0;
+  const sub = [0, 0, 0];
   const spawnCheck = new Vector3();
   let minSpawnClearance = Infinity;
   for (const team of ['blue', 'red'] as const) {
@@ -164,11 +165,14 @@ async function main(): Promise<void> {
     world.update(h.camera, dt, elapsed);
     const u = performance.now() - a;
     frames++;
+    const stats = world.stats();
     if (frames > 2) {
       updAcc += u;
       updMax = Math.max(updMax, u);
+      sub[0] = sub[0]! + stats.terrainMs;
+      sub[1] = sub[1]! + stats.cloudsMs;
+      sub[2] = sub[2]! + stats.treesMs;
     }
-    const stats = world.stats();
     const info = {
       map,
       view: viewName,
@@ -178,6 +182,7 @@ async function main(): Promise<void> {
       triangles: render.triangles,
       updateMsAvg: Number((updAcc / Math.max(frames - 2, 1)).toFixed(3)),
       updateMsMax: Number(updMax.toFixed(3)),
+      updateBreakdownMs: sub.map((v) => Number((v / Math.max(frames - 2, 1)).toFixed(3))),
       generationMs: Math.round(stats.generationMs),
       loadMs: Math.round(loadMs),
       heightAtNs: Number(heightNs.toFixed(1)),
