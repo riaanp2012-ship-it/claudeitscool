@@ -157,8 +157,8 @@ function hangar(scene: Scene): Group {
     scene.add(rib);
   }
   const jet = standInJet();
-  jet.position.set(0, 1.6, 0);
-  jet.rotation.y = 0.8;
+  jet.position.set(0, 1.7, 0);
+  jet.rotation.y = 2.25;
   scene.add(jet);
   const key = new SpotLight(0xfff1dc, 900, 60, 0.55, 0.6, 1.6);
   key.position.set(4, 18, 6);
@@ -167,8 +167,8 @@ function hangar(scene: Scene): Group {
   rim.position.set(-10, 12, -12);
   rim.target = jet;
   scene.add(key, rim, new HemisphereLight(0x3c4652, 0x141210, 0.25));
-  h.camera.position.set(-2.6, 3.6, 16);
-  h.camera.lookAt(0.6, 1.9, 0);
+  h.camera.position.set(-3, 4.6, 19);
+  h.camera.lookAt(0.5, 1.4, 0);
   return jet;
 }
 
@@ -178,12 +178,14 @@ function skyTexture(): CanvasTexture {
   c.height = 512;
   const x = c.getContext('2d')!;
   const g = x.createLinearGradient(0, 0, 0, 512);
-  g.addColorStop(0, '#1c2530');
-  g.addColorStop(0.42, '#51545a');
-  g.addColorStop(0.56, '#c28a5c');
-  g.addColorStop(0.6, '#8a5f45');
-  g.addColorStop(0.66, '#2a2724');
-  g.addColorStop(1, '#141414');
+  g.addColorStop(0, '#16202b');
+  g.addColorStop(0.22, '#3a4250');
+  g.addColorStop(0.34, '#8a7466');
+  g.addColorStop(0.4, '#e0a070');
+  g.addColorStop(0.42, '#f3c48c');
+  g.addColorStop(0.44, '#6d5446');
+  g.addColorStop(0.6, '#262322');
+  g.addColorStop(1, '#121212');
   x.fillStyle = g;
   x.fillRect(0, 0, 4, 512);
   const t = new CanvasTexture(c);
@@ -193,14 +195,14 @@ function skyTexture(): CanvasTexture {
 
 function sky(scene: Scene): Group {
   scene.background = skyTexture();
-  const sun = new DirectionalLight(0xffb27a, 4);
-  sun.position.set(-40, 8, -60);
-  scene.add(sun, new HemisphereLight(0x6a7688, 0x2a211c, 0.6));
+  const sun = new DirectionalLight(0xffb27a, 6);
+  sun.position.set(-40, 10, -60);
+  scene.add(sun, new HemisphereLight(0x8090a4, 0x2a211c, 1.1));
   const sea = new Mesh(new PlaneGeometry(4000, 4000), metal(0x1d2a33, 0.25, 0.1));
   sea.rotation.x = -Math.PI / 2;
   sea.position.y = -60;
   scene.add(sea);
-  const cloudMat = metal(0x9a8f86, 1, 0);
+  const cloudMat = metal(0xc9bcb0, 1, 0);
   for (let i = 0; i < 14; i++) {
     const c = new Mesh(new SphereGeometry(1, 14, 10), cloudMat);
     const a = i * 2.39996;
@@ -218,9 +220,9 @@ function sky(scene: Scene): Group {
 }
 
 const jet = SKY_SCREENS.has(screen) ? sky(h.scene) : hangar(h.scene);
-const turntable = screen === 'hangar' || screen === 'menu';
-h.frame((dt) => {
-  if (turntable) jet.rotation.y += dt * 0.12;
+// A fixed pose keeps screenshots comparable between critique passes.
+h.frame(() => {
+  jet.updateMatrixWorld();
 });
 
 // ─────────────────────────────────────────────────────────────── Mock data (realistic, not placeholder)
@@ -524,10 +526,6 @@ async function run(): Promise<void> {
       break;
     case 'toasts':
       ui.showGame();
-      ui.toast('Settings could not be saved. Storage is unavailable in this window.', 'warn');
-      ui.toast('Controller connected: standard layout.', 'info');
-      ui.toast('Graphics settings restored to their defaults.', 'success');
-      ui.toast('Rank 08 reached. MR-31 Wyvern liveries unlocked.', 'success');
       break;
     default:
       ui.showFatal('Unknown harness screen', `No screen named "${screen}". Check the screen parameter.`);
@@ -542,6 +540,25 @@ async function run(): Promise<void> {
     await wait(260);
   }
   await wait(screen === 'debrief' ? 3200 : 700);
+  if (screen === 'toasts') {
+    // Four toasts: the stack keeps the newest three (ZD-J12). Pushed last so none expire before capture.
+    ui.toast('Settings could not be saved. Storage is unavailable in this window.', 'warn');
+    ui.toast('Controller connected: standard layout.', 'info');
+    ui.toast('Graphics settings restored to their defaults.', 'success');
+    ui.toast('Rank 08 reached. Kv-40 Borzoi unlocks at rank 10.', 'info');
+    // Capture can take seconds under SwiftShader: refreshing the visible three keeps them on screen.
+    window.setInterval(() => {
+      ui.toast('Controller connected: standard layout.', 'info');
+      ui.toast('Graphics settings restored to their defaults.', 'success');
+      ui.toast('Rank 08 reached. Kv-40 Borzoi unlocks at rank 10.', 'info');
+    }, 1000);
+    await wait(300);
+  }
+  // SwiftShader renders slowly; let every finite UI transition and animation settle before capture.
+  const finite = document
+    .getAnimations()
+    .filter((a) => a.effect?.getComputedTiming().iterations !== Infinity);
+  await Promise.all(finite.map((a) => a.finished.catch(() => undefined)));
   window.__HARNESS_INFO__ = { screen, capturing: ui.capturingInput, sounds: played.length, ...audit() };
   window.__HARNESS_READY__ = true;
 }

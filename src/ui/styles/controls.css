@@ -216,6 +216,7 @@
   grid-template-columns: var(--space-12) minmax(0, 1fr) auto;
   column-gap: var(--space-3);
   align-items: center;
+  width: 100%;
   min-height: var(--item-h);
   padding: var(--space-2) var(--space-4);
   border: 0;
@@ -879,6 +880,12 @@
   font-variant-numeric: tabular-nums;
   text-align: right;
   white-space: nowrap;
+}
+
+.s1-dl--text > dd {
+  font-family: var(--font-body);
+  white-space: normal;
+  padding: var(--space-1) 0;
 }
 
 .s1-unit {

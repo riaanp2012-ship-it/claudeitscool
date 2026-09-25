@@ -232,8 +232,7 @@ export class HangarScreen extends Screen {
     const stations = def?.hardpoints ?? [];
     this.loadout.replaceChildren(
       el('div', 's1-section-title', [
-        txt('span', 's1-code', `Loadout // ${stations.length} stations`),
-        txt('span', 's1-code', 'Default stores'),
+        txt('span', 's1-code', `Loadout // ${stations.length} stations \u00b7 default stores`),
       ]),
       el(
         'ol',

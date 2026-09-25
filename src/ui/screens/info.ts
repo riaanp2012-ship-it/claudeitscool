@@ -51,7 +51,10 @@ export class CreditsScreen extends Screen {
     );
     this.frame.append(
       header({ code: 'CREDITS // LICENSES', title: 'Credits' }),
-      el('div', 's1-body', [stagger(intro, 1), stagger(el('div', 's1-credits__libs', [...tables, note]), 2)]),
+      el('div', 's1-body', [
+        stagger(intro, 1),
+        stagger(el('div', 's1-credits__libs s1-panel', [...tables, note]), 2),
+      ]),
     );
     const back = backButton(onBack);
     this.frame.appendChild(footer([HINT.back], [back.el]));

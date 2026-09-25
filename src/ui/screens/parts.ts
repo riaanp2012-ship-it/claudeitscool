@@ -41,11 +41,14 @@ export function unit(value: string, u: string): Child[] {
 
 /** Map summary card body used by setup and briefing screens. */
 export function mapFacts(map: MapSummary): HTMLElement {
-  return dataList([
-    ['Region', [map.region]],
-    ['Local time', [map.timeOfDay]],
-    ['Weather', [map.weather]],
-  ]);
+  return dataList(
+    [
+      ['Region', [map.region]],
+      ['Local time', [txt('span', 's1-mono', map.timeOfDay)]],
+      ['Weather', [map.weather]],
+    ],
+    's1-dl--text',
+  );
 }
 
 export function aircraftDesignation(a: AircraftSummary): { code: string; name: string } {

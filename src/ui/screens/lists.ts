@@ -101,7 +101,7 @@ abstract class ListScreen extends Screen {
       txt('div', 's1-code', e.detailCode),
       txt('h2', 's1-list__title s1-display', e.title),
       txt('p', 's1-body-text s1-list__text', e.detailText),
-      dataList(e.facts, 's1-list__facts'),
+      dataList(e.facts, 's1-list__facts s1-dl--text'),
     );
     this.detail.classList.remove('is-swap');
     void this.detail.offsetWidth;
@@ -129,11 +129,13 @@ export class TrainingScreen extends ListScreen {
       id: l.id,
       number: l.number,
       title: l.title,
-      sub: l.available
-        ? l.bestTime === null
-          ? 'Not flown'
-          : `Best ${formatLapTime(l.bestTime)}`
-        : 'Not available',
+      sub: !l.available
+        ? 'Not available'
+        : l.medal !== 'none'
+          ? `${MEDAL_LABEL[l.medal]} medal`
+          : l.bestTime === null
+            ? 'Not flown'
+            : 'Flown, no medal',
       available: l.available,
       reason: LESSON_UNAVAILABLE,
       tag: 'Unavailable',
@@ -142,7 +144,7 @@ export class TrainingScreen extends ListScreen {
       detailCode: `LESSON ${pad(l.number)} // ACADEMY`,
       detailText: l.description,
       facts: [
-        ['Best time', [formatLapTime(l.bestTime)]],
+        ['Best time', [txt('span', 's1-mono', formatLapTime(l.bestTime))]],
         ['Medal', [medal(l.medal)]],
         ['Status', [l.medal === 'none' ? (l.bestTime === null ? 'Not flown' : 'Flown') : 'Passed']],
       ],

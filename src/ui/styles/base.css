@@ -604,6 +604,7 @@
 
 .s1-toast__text {
   grid-column: 2;
+  text-wrap: pretty;
   font-size: 14px;
   line-height: 20px;
   color: var(--bone);

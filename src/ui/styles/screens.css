@@ -175,7 +175,7 @@
 }
 
 .s1-mm__menu {
-  grid-column: 1 / span 4;
+  grid-column: 1 / span 3;
   grid-row: 2;
   align-self: center;
   display: grid;
@@ -301,6 +301,10 @@
   grid-column: 1 / span 5;
 }
 
+[data-narrow] .s1-mm__menu {
+  grid-column: 1 / span 4;
+}
+
 [data-narrow] .s1-mm__ctx {
   grid-column: 7 / -1;
 }
@@ -392,7 +396,7 @@
 /* ─── Lists (Training, Campaign) ───────────────────────────────────────────────── */
 
 .s1-list__col {
-  grid-column: 1 / span 7;
+  grid-column: 1 / span 6;
   align-self: start;
   max-height: 100%;
 }
@@ -424,6 +428,10 @@
 [data-compact] .s1-row {
   padding-top: var(--space-1);
   padding-bottom: var(--space-1);
+}
+
+[data-narrow] .s1-list__col {
+  grid-column: 1 / span 7;
 }
 
 [data-narrow] .s1-list__detail {
@@ -771,8 +779,21 @@
 .s1-credits__libs {
   grid-column: 7 / -1;
   display: grid;
-  gap: var(--space-8);
+  gap: var(--space-6);
   align-content: start;
+  align-self: start;
+}
+
+.s1-credits__table {
+  table-layout: fixed;
+}
+
+.s1-credits__table th:nth-child(1) {
+  width: 32%;
+}
+
+.s1-credits__table th:nth-child(3) {
+  width: 18%;
 }
 
 .s1-credits__lib {
@@ -995,7 +1016,7 @@
 }
 
 .s1-pause__col {
-  grid-column: 1 / span 4;
+  grid-column: 1 / span 3;
   grid-row: 2;
   align-self: center;
   display: grid;
