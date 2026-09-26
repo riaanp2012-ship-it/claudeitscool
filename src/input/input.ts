@@ -159,6 +159,9 @@ export class Input {
   private readonly held = new Map<ActionId, boolean>();
   private readonly pressedEdge = new Set<ActionId>();
   private readonly prevHeld = new Map<ActionId, boolean>();
+  /** Actions held when input was cleared; they stay released until the button is let go. */
+  private readonly suppressed = new Set<ActionId>();
+  private suppressPending = false;
   private accDX = 0;
   private accDY = 0;
   private lastUnlock = -10000;
@@ -272,6 +275,8 @@ export class Input {
 
   /** Clears everything (focus loss, pause, restart) so nothing sticks (ZD-H01). */
   clear(): void {
+    // Gamepad buttons still held (e.g. B used to leave a menu) are ignored until released.
+    this.suppressPending = true;
     this.downCodes.clear();
     this.held.clear();
     this.pressedEdge.clear();
@@ -352,6 +357,15 @@ export class Input {
     this.analog.lookX = lookX;
     this.analog.lookY = lookY;
 
+    if (this.suppressPending) {
+      this.suppressPending = false;
+      this.suppressed.clear();
+      for (const action of ACTIONS) if (this.held.get(action)) this.suppressed.add(action);
+    }
+    for (const action of this.suppressed) {
+      if (this.held.get(action)) this.held.set(action, false);
+      else this.suppressed.delete(action);
+    }
     this.pressedEdge.clear();
     for (const action of ACTIONS) {
       const now = this.held.get(action) ?? false;
