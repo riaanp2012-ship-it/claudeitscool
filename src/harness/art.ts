@@ -235,9 +235,9 @@ if (view === 'lineup') {
   });
   ground(groundY);
   const mid = new Vector3(x / 2, 2, (x / 2) * 0.42);
-  camera.position.set(mid.x - 58, 24, mid.z - 72);
-  camera.lookAt(mid.x - 4, 1.5, mid.z - 2);
-  camera.fov = 38;
+  camera.position.set(mid.x - 34, 12, mid.z - 44);
+  camera.lookAt(mid.x - 1, 0.5, mid.z + 1);
+  camera.fov = 44;
   camera.updateProjectionMatrix();
   shadowBox(60, mid);
 } else if (view === 'closeup' || view === 'lod') {
