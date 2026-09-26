@@ -161,7 +161,7 @@ void main() {
   vWorld = center;
   vEnergy = 1.0;
   vUv = corner + 0.5;
-  if (mode < 1.5) {
+  if (mode < 1.5 || mode > 2.5) {
     // Camera-facing sprite with a minimum on-screen size; energy is conserved when enlarged (ZD-B13).
     vec4 mv = viewMatrix * vec4(center, 1.0);
     float depth = -mv.z;
@@ -253,6 +253,11 @@ void main() {
     float h = heat * (0.2 + 0.5 * shape + 0.65 * tex.a * turb);
     occlusion = shape * vColor.a * ${f(FIRE_OCCLUSION)};
     col = fireRamp(h) * (shape * vColor.a * ${f(FIRE_EMIT)});
+  } else if (vMode > 2.5) {
+    // Glow: tight core plus a wide soft halo, computed in float so it never bands.
+    float r = length(vUv - 0.5) * 2.0;
+    float m = exp(-r * r * 22.0) * 0.75 + exp(-r * 6.0) * 0.25;
+    col = vColor.rgb * (m * (1.0 - smoothstep(0.75, 1.0, r)) * vColor.a);
   } else {
     float across = vUv.y * 2.0 - 1.0;
     float core = pow(max(1.0 - across * across, 0.0), 2.5);

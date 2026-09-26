@@ -76,12 +76,14 @@ export const NOISE_SIZE = 128;
 
 // ─────────────────────────────────────────────────────────────── Particle styles
 
-/** Shader modes. Alpha batch: 0 lit smoke, 1 unlit tint. Additive batch: 0 tinted sprite, 1 fire, 2 streak. */
+/** Shader modes. Alpha batch: 0 lit smoke, 1 unlit tint. Additive: 0 sprite, 1 fire, 2 streak, 3 glow. */
 export const MODE_LIT = 0;
 export const MODE_TINT = 1;
 export const MODE_SPRITE = 0;
 export const MODE_FIRE = 1;
 export const MODE_STREAK = 2;
+/** Procedural soft glow (no texture, so bright glows never band). */
+export const MODE_GLOW = 3;
 
 export const COLLIDE_NONE = 0;
 /** Slides along the ground (smoke, dust). */
@@ -394,10 +396,10 @@ export const RIBBON_DEFS: readonly TrailKindDef[] = [
   // CONTRAIL: thin, long, bright white.
   trailKind({
     life: 14,
-    width0: 0.7,
-    width1: 5,
-    growTau: 5,
-    opacity: 0.78,
+    width0: 1.6,
+    width1: 9,
+    growTau: 6,
+    opacity: 0.85,
     fadeIn: 0.1,
     fadeOut: 0.5,
     thin: 0.45,
@@ -414,8 +416,8 @@ export const RIBBON_DEFS: readonly TrailKindDef[] = [
   // VORTEX: very thin wingtip vapor, only while intensity > 0.
   trailKind({
     life: 1.1,
-    width0: 0.22,
-    width1: 0.7,
+    width0: 0.3,
+    width1: 1.1,
     growTau: 0.6,
     opacity: 0.6,
     fadeIn: 0.02,
@@ -472,8 +474,8 @@ export const RIBBON_DEFS: readonly TrailKindDef[] = [
   // FLARE_SMOKE: white smoke behind a falling flare.
   trailKind({
     life: 3.8,
-    width0: 0.8,
-    width1: 6.5,
+    width0: 1.5,
+    width1: 9,
     growTau: 1.4,
     opacity: 0.85,
     fadeOut: 0.3,
@@ -938,6 +940,21 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         lobeRadius: 5,
         heat: 1.3,
       },
+      // Burning crater: small flames keep licking up for a few seconds and feed the smoke column.
+      {
+        style: STYLE.FIRE,
+        count: 16,
+        life: [0.5, 0.9],
+        size0: [2.5, 4],
+        size1: [4, 7],
+        speed: [1, 3],
+        up: 4,
+        dir: DIR_HEMI,
+        offset: 4,
+        lift: 1.5,
+        delay: [0.6, 4.5],
+        heat: 0.9,
+      },
       {
         style: STYLE.DIRT,
         count: 44,
@@ -956,8 +973,8 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         style: STYLE.DUST,
         count: 28,
         life: [4, 6.5],
-        size0: [4, 8],
-        size1: [16, 30],
+        size0: [6, 10],
+        size1: [22, 40],
         speed: [8, 32],
         dir: DIR_CONE_UP,
         spread: 0.4,
@@ -967,6 +984,7 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
         color: DUST,
         jitter: 0.15,
         alpha: 0.8,
+        drag: 0.5,
       },
       {
         style: STYLE.DUST,
@@ -985,21 +1003,22 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
       },
       {
         style: STYLE.SMOKE,
-        count: 24,
+        count: 30,
         life: [8, 12],
-        size0: [8, 12],
+        size0: [6, 10],
         size1: [30, 48],
         speed: [3, 9],
-        up: 5,
+        up: 10,
         dir: DIR_CONE_UP,
         spread: 0.3,
         offset: 5,
         lift: 6,
-        delay: [0.25, 1.2],
+        delay: [0.2, 4.5],
         color: [0.1, 0.092, 0.085],
         jitter: 0.2,
         alpha: 0.86,
         emissive: 0.5,
+        drag: 0.45,
       },
       {
         style: STYLE.SPARK,
@@ -1031,18 +1050,34 @@ export const EXPLOSIONS: Record<ExplosionKind, RecipeDef> = {
       },
       {
         style: STYLE.SPRAY,
-        count: 70,
+        count: 80,
         life: [2.4, 3.8],
-        size0: [2.5, 4.5],
-        size1: [7, 12],
-        speed: [22, 58],
+        size0: [1.6, 3.2],
+        size1: [5, 10],
+        speed: [20, 62],
         dir: DIR_CONE_UP,
-        spread: 0.16,
+        spread: 0.22,
         offset: 3,
         lift: 1,
         color: SPRAY,
         jitter: 0.06,
         alpha: 0.95,
+      },
+      // Crown: thinner jets thrown wider that fall back as a curtain.
+      {
+        style: STYLE.SPRAY,
+        count: 36,
+        life: [2, 3.2],
+        size0: [1, 1.8],
+        size1: [3, 6],
+        speed: [26, 48],
+        dir: DIR_CONE_UP,
+        spread: 0.55,
+        offset: 4,
+        lift: 1,
+        color: SPRAY,
+        jitter: 0.05,
+        alpha: 0.85,
       },
       {
         style: STYLE.SPRAY,
