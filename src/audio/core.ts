@@ -22,6 +22,8 @@ export interface AudioCoreOptions {
   /** Scheduling lead for new sounds (default 10 ms; 0 for offline rendering). */
   lookahead?: number;
   volumes?: AudioVolumes;
+  /** HRTF panning for nearby sources (default true); false uses equal-power everywhere (cheaper). */
+  hrtf?: boolean;
   /** Audible AI engines (nearest/loudest), besides the player's. */
   maxAiEngines?: number;
   /** Audible AI guns, besides the player's. */
@@ -29,7 +31,7 @@ export interface AudioCoreOptions {
 }
 
 /** Engine graphs built per update() at most (spreads the node-creation cost of a mission start). */
-const MAX_BUILDS_PER_FRAME = 2;
+const MAX_BUILDS_PER_FRAME = 1;
 
 export const DEFAULT_VOLUMES: Readonly<AudioVolumes> = {
   master: 0.8,
@@ -50,6 +52,7 @@ export class AudioCore implements AudioHost {
   readonly listener = new ListenerState();
   readonly rnd: Rng;
   readonly lookahead: number;
+  readonly hrtf: boolean;
   readonly sfx: SfxPlayer;
   readonly tones: CockpitTonesImpl;
   readonly strain: StrainVoice;
@@ -73,6 +76,7 @@ export class AudioCore implements AudioHost {
   ) {
     this.rnd = options.rng ?? cosmetic;
     this.lookahead = options.lookahead ?? 0.01;
+    this.hrtf = options.hrtf ?? true;
     this.maxAiEngines = options.maxAiEngines ?? 5;
     this.maxAiGuns = options.maxAiGuns ?? 4;
     this.bank = new SoundBank(ctx);
@@ -188,7 +192,8 @@ export class AudioCore implements AudioHost {
       this.selected[i] = e.active ? 1 : 0;
     }
     this.selector.select(this.scores, ne, this.maxAiEngines, 1e-3, 1.3, this.selected);
-    // Building an engine graph costs ~0.3 ms, so at most MAX_BUILDS_PER_FRAME start per frame (player first).
+    // Building an engine graph (~45 nodes) costs 0.3-2 ms, so at most MAX_BUILDS_PER_FRAME start per frame
+    // (player first); the rest become audible over the next frames, behind their 250 ms fade-in anyway.
     let builds = 0;
     for (let i = 0; i < ne; i++) {
       const e = this.engines[i]!;
