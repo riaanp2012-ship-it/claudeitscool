@@ -343,8 +343,11 @@ void main() {
   float macro = macroA * 0.6 + macroB * 0.4;
   // Geometric (per-triangle) normal: on cliffs the baked normal is too coarse, so steep faces use the
   // real triangle slope for both the rock mask and lighting (no sawtooth along steep coastlines).
-  vec3 geoN = normalize(cross(dFdx(vTerrain), dFdy(vTerrain)));
-  geoN *= sign(geoN.y + 1e-6);
+  // Skirt triangles are degenerate in vTerrain (zero cross product): fall back to the baked normal there.
+  vec3 gc = cross(dFdx(vTerrain), dFdy(vTerrain));
+  float gl = length(gc);
+  vec3 geoN = gl > 1e-8 ? gc / gl : N;
+  geoN *= geoN.y < 0.0 ? -1.0 : 1.0;
   float geoSlope = 1.0 - geoN.y;
   float steep = smoothstep(0.42, 0.62, geoSlope) * near;
   N = normalize(mix(N, geoN, steep * 0.85));
@@ -475,6 +478,8 @@ void main() {
 
   color = atmoApply(color, ray);
   color = mix(color, atmoSky(ray / max(dist, 1e-3)), smoothstep(uFarFade.x, uFarFade.y, dist));
+  // Never let a non-finite value reach the HDR buffer (bloom would spread it over the frame, ZD-B12).
+  if (any(isnan(color)) || any(isinf(color))) color = atmoSky(ray / max(dist, 1e-3));
   gl_FragColor = vec4(color, 1.0);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

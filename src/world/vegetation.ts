@@ -17,8 +17,9 @@ import {
 } from 'three';
 import { hash2, Rng } from '../core/rng';
 import { patchAtmosphere } from '../render/atmosphere';
+import { setUploadRange } from './gpu';
 import type { HeightGrid } from './heightfield';
-import type { TreeSpecies, VegetationDef } from './maps/types';
+import type { FlatRect, TreeSpecies, VegetationDef } from './maps/types';
 
 const CELL = 512;
 
@@ -149,6 +150,7 @@ interface SpeciesData {
   cellStart: Uint32Array;
   cellCount: Uint32Array;
   attr: InstancedBufferAttribute;
+  range: { start: number; count: number };
   max: number;
 }
 
@@ -162,6 +164,8 @@ export interface VegetationOptions {
   seed: number;
   /** Circles where nothing may grow (x, z, r). */
   clearings: readonly [number, number, number][];
+  /** Rotated rectangles kept clear (airfield grounds). */
+  exclusions: readonly FlatRect[];
   waterLevel: number;
 }
 
@@ -252,6 +256,15 @@ export class Vegetation {
               blocked = true;
               break;
             }
+          }
+          for (let e = 0; e < o.exclusions.length && !blocked; e++) {
+            const r = o.exclusions[e]!;
+            const dx = x - r.x;
+            const dz = z - r.z;
+            const hs = Math.sin(r.heading);
+            const hc = -Math.cos(r.heading);
+            if (Math.abs(dx * hs + dz * hc) < r.halfLength && Math.abs(-dx * hc + dz * hs) < r.halfWidth)
+              blocked = true;
           }
           if (blocked) continue;
           // Species stands: low-frequency field biases the pick so stands cluster.
@@ -352,7 +365,18 @@ export class Vegetation {
       mesh.matrixAutoUpdate = false;
       mesh.name = `trees-${sp.kind}`;
       this.meshes.push(mesh);
-      this.species.push({ geometry, base, material, mesh, data, cellStart, cellCount, attr, max });
+      this.species.push({
+        geometry,
+        base,
+        material,
+        mesh,
+        data,
+        cellStart,
+        cellCount,
+        attr,
+        range: { start: 0, count: 0 },
+        max,
+      });
     });
     this.totalTrees = total;
   }
@@ -434,9 +458,7 @@ export class Vegetation {
     for (let s = 0; s < this.species.length; s++) {
       const sp = this.species[s]!;
       sp.geometry.instanceCount = counts[s]!;
-      sp.attr.clearUpdateRanges();
-      sp.attr.addUpdateRange(0, Math.max(counts[s]!, 1) * 4);
-      sp.attr.needsUpdate = true;
+      setUploadRange(sp.attr, sp.range, counts[s]!);
       sp.mesh.visible = counts[s]! > 0;
     }
     this.visibleCells = written0;

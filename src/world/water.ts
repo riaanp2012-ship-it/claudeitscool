@@ -110,6 +110,7 @@ void main() {
 
   col = atmoApply(col, ray);
   col = mix(col, atmoSky(-V), smoothstep(uFarFade.x, uFarFade.y, dist));
+  if (any(isnan(col)) || any(isinf(col))) col = atmoSky(-V);
   gl_FragColor = vec4(col, alpha);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>

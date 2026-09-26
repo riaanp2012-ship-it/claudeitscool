@@ -460,18 +460,26 @@ function build(b: StructureBuilder, heightAt: (x: number, z: number) => number):
   // Quay: a straight stone wall along the harbor front, and two breakwater arms enclosing the basin.
   const quayH = 3.2;
   b.box(HARBOR.x - 20, -6, HARBOR.z + 120, 440, quayH + 6, 24, 8 * DEG, srgb(0x8c877c));
-  breakwater(b, [
-    [HARBOR.x - 330, HARBOR.z + 60],
-    [HARBOR.x - 380, HARBOR.z + 420],
-    [HARBOR.x - 150, HARBOR.z + 640],
-  ]);
-  breakwater(b, [
-    [HARBOR.x + 260, HARBOR.z + 90],
-    [HARBOR.x + 330, HARBOR.z + 480],
-    [HARBOR.x + 120, HARBOR.z + 700],
-  ]);
+  breakwater(
+    b,
+    [
+      [HARBOR.x - 330, HARBOR.z + 60],
+      [HARBOR.x - 370, HARBOR.z + 330],
+      [HARBOR.x - 170, HARBOR.z + 480],
+    ],
+    rng,
+  );
+  breakwater(
+    b,
+    [
+      [HARBOR.x + 260, HARBOR.z + 90],
+      [HARBOR.x + 310, HARBOR.z + 360],
+      [HARBOR.x + 90, HARBOR.z + 530],
+    ],
+    rng,
+  );
   // Harbor light at the end of the east arm.
-  b.cylinder(HARBOR.x + 120, 2, HARBOR.z + 700, 2.2, 9, srgb(0xc23a2a), 12);
+  b.cylinder(HARBOR.x + 90, 2, HARBOR.z + 530, 2.2, 9, srgb(0xc23a2a), 12);
   // Warehouses on the quay.
   for (let i = 0; i < 5; i++) {
     const x = HARBOR.x - 170 + i * 80;
@@ -626,15 +634,33 @@ function samSite(
   b.box(x, y - 0.3, z, 6, 3.2, 10, 0.3, srgb(0x4f5546));
 }
 
-function breakwater(b: StructureBuilder, pts: P2[]): void {
-  const poly = catmullRom(pts, 20);
+function breakwater(b: StructureBuilder, pts: P2[], rng: Rng): void {
+  const poly = catmullRom(pts, 14);
   for (let i = 1; i < poly.length; i++) {
     const a = poly[i - 1]!;
     const c = poly[i]!;
     const len = Math.hypot(c[0] - a[0], c[1] - a[1]);
     const heading = Math.atan2(c[0] - a[0], -(c[1] - a[1]));
-    b.box((a[0] + c[0]) / 2, -8, (a[1] + c[1]) / 2, 16, 10.5, len + 1, heading, srgb(0x77746c));
-    b.box((a[0] + c[0]) / 2, 2.5, (a[1] + c[1]) / 2, 7, 1.4, len + 1, heading, srgb(0x9b978c));
+    const mx = (a[0] + c[0]) / 2;
+    const mz = (a[1] + c[1]) / 2;
+    // Rubble mound with rock armour blocks and a narrow concrete crown wall.
+    b.box(mx, -8, mz, 13, 9.4, len + 1, heading, srgb(0x5e5a52));
+    for (let k = 0; k < 3; k++) {
+      const off = rng.range(-5, 5);
+      const bx = mx + Math.cos(heading) * off;
+      const bz = mz + Math.sin(heading) * off;
+      b.box(
+        bx,
+        rng.range(0.2, 0.9),
+        bz,
+        rng.range(2.5, 4),
+        rng.range(1.2, 2),
+        rng.range(2.5, 4),
+        rng.range(0, 3),
+        srgb(rng.pick([0x6f6a60, 0x5b574f, 0x7a756a])),
+      );
+    }
+    b.box(mx, 1.2, mz, 3.2, 1.6, len + 0.5, heading, srgb(0x8d887d));
   }
 }
 

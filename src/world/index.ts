@@ -73,6 +73,8 @@ export interface WorldStats {
 
 /** World plus diagnostics for harness pages. */
 export interface WorldInternal extends World {
+  /** PMREM render target behind `environment` (for diagnostics). */
+  readonly envTarget: WebGLRenderTarget;
   stats(): WorldStats;
 }
 
@@ -204,6 +206,7 @@ export async function createWorldWith(
     radius: q.treeRadius,
     seed: def.seed[0] * 31 + def.seed[1],
     clearings: [...clearings, ...builder.clearings],
+    exclusions: def.airbases.map((a) => a.grounds),
     waterLevel: def.waterLevel,
   });
   disposables.push(vegetation);
@@ -311,6 +314,7 @@ export async function createWorldWith(
       timings[1] = t2 - t1;
       timings[2] = t3 - t2;
     },
+    envTarget,
     stats() {
       return {
         terrainNodes: terrain.selector.selection.fullCount + terrain.selector.selection.partialCount,
@@ -341,7 +345,8 @@ const waterColors: Partial<Record<MapId, { deep: Color; shallow: Color }>> = {
 
 function captureEnvironment(renderer: WebGLRenderer, groundAlbedo: Color): WebGLRenderTarget {
   const scene = new Scene();
-  const envSky = new Sky({ cirrus: 0, groundAlbedo, env: true, sunDisk: 5 });
+  // No sun disk here: PBR materials already get the sun's highlight from World.sun (no double highlight).
+  const envSky = new Sky({ cirrus: 0, groundAlbedo, env: true, sunDisk: 0 });
   scene.add(envSky.mesh);
   const pmrem = new PMREMGenerator(renderer);
   const rt = pmrem.fromScene(scene, 0, 1, 5000);

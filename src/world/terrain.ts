@@ -24,6 +24,7 @@ import type { TerrainBounds } from './heightfield';
 import type { AirbaseDef, TerrainPalette } from './maps/types';
 import { MAX_APRONS, MAX_LEVELS, MAX_RUNWAYS, MAX_TAXI, TERRAIN_FRAG, TERRAIN_VERT } from './terrainShader';
 import { runwayNumber } from './geom2d';
+import { setUploadRange } from './gpu';
 
 /** Grid mesh with an outer skirt ring (position.y = 1 marks skirt vertices). Grid coords in position.xz. */
 export function buildGridGeometry(n: number): { positions: Float32Array; index: Uint32Array } {
@@ -97,6 +98,8 @@ export class Terrain {
   private readonly fullGeo: InstancedBufferGeometry;
   private readonly partialGeo: InstancedBufferGeometry;
   private readonly materials: ShaderMaterial[] = [];
+  private readonly fullRange = { start: 0, count: 0 };
+  private readonly partialRange = { start: 0, count: 0 };
   readonly uniforms: Record<string, IUniform>;
 
   constructor(opts: TerrainOptions) {
@@ -190,12 +193,8 @@ export class Terrain {
     const sel = this.selector.select(cam[12]!, cam[13]!, cam[14]!, pl);
     this.fullGeo.instanceCount = sel.fullCount;
     this.partialGeo.instanceCount = sel.partialCount;
-    this.fullAttr.clearUpdateRanges();
-    this.fullAttr.addUpdateRange(0, Math.max(sel.fullCount, 1) * 4);
-    this.fullAttr.needsUpdate = true;
-    this.partialAttr.clearUpdateRanges();
-    this.partialAttr.addUpdateRange(0, Math.max(sel.partialCount, 1) * 4);
-    this.partialAttr.needsUpdate = true;
+    setUploadRange(this.fullAttr, this.fullRange, sel.fullCount);
+    setUploadRange(this.partialAttr, this.partialRange, sel.partialCount);
     const fade = this.uniforms.uFarFade!.value as Vector2;
     fade.set(camera.far * 0.62, camera.far * 0.97);
   }

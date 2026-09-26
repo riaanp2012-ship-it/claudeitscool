@@ -1,4 +1,5 @@
 import {
+  type BufferAttribute,
   BufferGeometry,
   Float32BufferAttribute,
   Mesh,
@@ -78,4 +79,20 @@ export function yieldToEventLoop(): Promise<void> {
     pending.push(resolve);
     channel!.port2.postMessage(0);
   });
+}
+
+/**
+ * Marks the first `count` items of an attribute for upload without allocating: reuses one range object.
+ * (three only mutates ranges when merging several, and this always sets exactly one.)
+ */
+export function setUploadRange(
+  attr: BufferAttribute,
+  range: { start: number; count: number },
+  count: number,
+): void {
+  range.start = 0;
+  range.count = Math.max(count, 1) * attr.itemSize;
+  attr.updateRanges.length = 0;
+  attr.updateRanges.push(range);
+  attr.needsUpdate = true;
 }
