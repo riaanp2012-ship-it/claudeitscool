@@ -249,8 +249,8 @@ if (view === 'lineup') {
   });
   ground(groundY);
   const mid = new Vector3(x / 2, 2, (x / 2) * 0.42);
-  camera.position.set(mid.x - 34, 12, mid.z - 44);
-  camera.lookAt(mid.x - 1, 0.5, mid.z + 1);
+  camera.position.set(mid.x - 17, 19, mid.z - 80);
+  camera.lookAt(mid.x - 15, 0, mid.z);
   camera.fov = 44;
   camera.updateProjectionMatrix();
   shadowBox(60, mid);
