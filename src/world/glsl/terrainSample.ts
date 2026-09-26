@@ -68,3 +68,18 @@ export function horizonDrop(dist: number): number {
   const d = Math.max(dist - CURVATURE_START, 0);
   return (d * d * 0.5) / EARTH_RADIUS;
 }
+
+/**
+ * Soft shadows of the (static) cumulus field, baked once to a ground texture. Uniforms: uCloudShadow,
+ * uCloudBox = (originX, originZ, 1 / size, strength).
+ */
+export const CLOUD_SHADOW_GLSL = /* glsl */ `
+uniform sampler2D uCloudShadow;
+uniform vec4 uCloudBox;
+float cloudShadow(vec3 wp) {
+  vec2 q = wp.xz - uSunDir.xz / max(uSunDir.y, 0.05) * wp.y;
+  vec2 uv = (q - uCloudBox.xy) * uCloudBox.z;
+  if (uv.x <= 0.0 || uv.y <= 0.0 || uv.x >= 1.0 || uv.y >= 1.0) return 1.0;
+  return mix(1.0, texture2D(uCloudShadow, uv).r, uCloudBox.w);
+}
+`;

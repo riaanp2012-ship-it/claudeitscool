@@ -64,11 +64,10 @@ void main() {
   vec3 a = tileFbm(uv, vec2(8.0), 7, 0.55);
   vec3 b = tileFbm(uv + 0.37, vec2(32.0), 5, 0.5);
   float cell = tileCell(uv, 24.0);
-  float edges = smoothstep(0.0, 0.12, cell);
   // Detail height: broad lumps, fine grain and cracks between cells.
   vec2 grad = a.yz * 0.55 + b.yz * 0.35;
   vec3 n = normalize(vec3(-grad * 0.012, 1.0));
-  float albedo = clamp(0.5 + a.x * 0.8 + b.x * 0.35 - (1.0 - edges) * 0.15, 0.0, 1.0);
+  float albedo = clamp(0.5 + a.x * 0.8 + b.x * 0.35, 0.0, 1.0);
   gl_FragColor = vec4(albedo, n.x * 0.5 + 0.5, n.y * 0.5 + 0.5, clamp(cell * 2.2, 0.0, 1.0));
 }
 `;

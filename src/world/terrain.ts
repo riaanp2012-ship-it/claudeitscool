@@ -75,6 +75,7 @@ export interface TerrainOptions {
   quality: TerrainQuality;
   bounds: TerrainBounds;
   sampleUniforms: Record<string, IUniform>;
+  cloudShadow: Record<string, IUniform>;
   textures: TerrainTextures;
   palette: TerrainPalette;
   airbases: readonly AirbaseDef[];
@@ -124,6 +125,7 @@ export class Terrain {
 
     this.uniforms = {
       ...opts.sampleUniforms,
+      ...opts.cloudShadow,
       ...atmoUniforms,
       ...airbaseUniforms(opts.airbases),
       ...paletteUniforms(opts.palette),
