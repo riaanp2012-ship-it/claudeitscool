@@ -1,5 +1,15 @@
-import type { AircraftId, AircraftModelFactory, OrdnanceModelFactory } from '../core/types';
-import { getAirframe, getFxMaterial, getGlassMaterial, getLiveryMaterial, makeOrdnanceMesh } from './cache';
+import type { Object3D } from 'three';
+import type { AircraftId, AircraftModelFactory, GroundTargetKind, OrdnanceModelFactory } from '../core/types';
+import {
+  getAirframe,
+  getFxMaterial,
+  getGlassMaterial,
+  getLiveryMaterial,
+  getOrdnanceMaterial,
+  getWreckMaterial,
+  makeOrdnanceMesh,
+} from './cache';
+import { makeGroundUnit, wreckGroundUnit } from './ground';
 import { hasDesign } from './designs';
 import { ArtAircraftModel } from './model';
 
@@ -38,4 +48,18 @@ export function artStats(id: AircraftId): {
     lod0: { triangles: a.triangles.lod0, drawCalls: 3 },
     lod1: { triangles: a.triangles.lod1, drawCalls: 2 },
   };
+}
+
+/**
+ * Ground target at real scale (SAM launcher, AAA, radar, hangar, fuel farm, command bunker, concrete bunker,
+ * frigate). Front toward -Z, origin at the ground contact centre (ship: waterline). Geometry is shared per
+ * (kind, climate); `desert` switches to sand paint.
+ */
+export function createGroundUnitModel(kind: GroundTargetKind, desert: boolean): Object3D {
+  return makeGroundUnit(kind, desert, getOrdnanceMaterial());
+}
+
+/** Converts a unit from createGroundUnitModel into its wreck (scorched, slumped). Safe to call twice. */
+export function wreckGroundUnitModel(obj: Object3D): void {
+  wreckGroundUnit(obj, getWreckMaterial());
 }
