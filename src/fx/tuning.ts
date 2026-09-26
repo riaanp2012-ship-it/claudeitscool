@@ -628,7 +628,7 @@ export interface RecipeDef {
 
 const SMOKE_BLACK = [0.062, 0.058, 0.055] as const;
 const SMOKE_DARK = [0.1, 0.095, 0.09] as const;
-const DUST = [0.4, 0.34, 0.26] as const;
+const DUST = [0.25, 0.205, 0.15] as const;
 const DIRT = [0.11, 0.09, 0.07] as const;
 const SPRAY = [0.86, 0.9, 0.92] as const;
 const SPARK = [3.6, 1.6, 0.5] as const;
