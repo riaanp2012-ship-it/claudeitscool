@@ -892,6 +892,8 @@ async function loadFonts(): Promise<void> {
 
 const times = new Float64Array(2000);
 let timeCount = 0;
+/** Steady-state cost from a tight loop (immune to the coarse per-call timer resolution). */
+let loopMs = 0;
 
 function report(): void {
   const n = Math.min(timeCount, times.length);
@@ -906,6 +908,7 @@ function report(): void {
     drawMsP50: Number(p(0.5).toFixed(4)),
     drawMsP95: Number(p(0.95).toFixed(4)),
     drawMsMax: Number((sorted[n - 1] ?? 0).toFixed(4)),
+    loopMsPerDraw: Number(loopMs.toFixed(4)),
   };
 }
 
@@ -950,6 +953,14 @@ async function main(): Promise<void> {
       step(dt);
       frames++;
       if (frames === 240) {
+        // 600 back-to-back draws with a changing state: the average is the steady-state HUD cost.
+        const t0 = performance.now();
+        for (let i = 0; i < 600; i++) {
+          elapsed += 1 / 60;
+          updateState(elapsed);
+          hud.draw(state, 1 / 60);
+        }
+        loopMs = (performance.now() - t0) / 600;
         report();
         window.__HARNESS_READY__ = true;
       }

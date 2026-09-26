@@ -99,7 +99,7 @@ export class Painter {
     this.font = null;
     this.align = '';
     const ctx = this.ctx;
-    ctx.lineJoin = 'round';
+    ctx.lineJoin = 'miter';
     ctx.lineCap = 'butt';
     ctx.miterLimit = 2;
     ctx.textBaseline = 'middle';

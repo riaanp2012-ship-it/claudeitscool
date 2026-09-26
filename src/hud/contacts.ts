@@ -215,13 +215,25 @@ function drawSelected(dc: DrawContext, c: HudContact): void {
   }
 }
 
+/**
+ * Off-screen arrows ride an ellipse near the safe-area edge, pulled in far enough to pass inside the
+ * corner panels (stores, radar, RWR, feeds) and lifted slightly so the bottom clears the subtitles.
+ */
+const ARROW_DY = -12;
+function arrowA(L: DrawContext['L']): number {
+  return L.safeW / 2 - 112 * L.S;
+}
+function arrowB(L: DrawContext['L']): number {
+  return L.safeH / 2 - 92 * L.S;
+}
+
 /** Off-screen arrows for one group along an ellipse inside the safe area. */
 function drawGroupArrows(dc: DrawContext, g: number): void {
   const { ctx, p, L, v2 } = dc;
   const cs = dc.state.contacts;
   const S = L.S;
-  const a = L.safeW / 2 - 76 * S;
-  const b = L.safeH / 2 - 70 * S;
+  const a = arrowA(L);
+  const b = arrowB(L);
   let count = 0;
   ctx.beginPath();
   for (let i = 0; i < cs.length; i++) {
@@ -233,7 +245,7 @@ function drawGroupArrows(dc: DrawContext, g: number): void {
     const dy = -Math.cos(ang);
     const size = (c.selected ? 13 : 9) * S;
     const ex = L.cx + v2.x;
-    const ey = L.cy + v2.y;
+    const ey = L.cy + ARROW_DY * S + v2.y;
     const bx = ex - dx * size * 0.7;
     const by = ey - dy * size * 0.7;
     ctx.moveTo(ex + dx * size, ey + dy * size);
@@ -252,9 +264,9 @@ function drawSelectedArrowLabel(dc: DrawContext, c: HudContact): void {
   const { p, L, f, s, v2 } = dc;
   const S = L.S;
   const ang = fin(c.offscreenAngle);
-  ellipseEdge(ang, L.safeW / 2 - 76 * S, L.safeH / 2 - 70 * S, v2);
+  ellipseEdge(ang, arrowA(L), arrowB(L), v2);
   const x = L.cx + v2.x - Math.sin(ang) * 30 * S;
-  const y = L.cy + v2.y + Math.cos(ang) * 30 * S;
+  const y = L.cy + ARROW_DY * S + v2.y + Math.cos(ang) * 30 * S;
   p.textStyle(f.monoS, groupColor(dc, groupOf(c)), 'center');
   p.text(s.range.get(rangeKey(distanceIn(fin(c.distance), dc.state.units))), x, y);
 }
