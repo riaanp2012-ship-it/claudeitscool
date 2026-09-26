@@ -18,9 +18,22 @@ import {
   type WebGLProgramParametersWithUniforms,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { artStats, createAircraftModel, createOrdnanceModel } from '../art';
+import {
+  artStats,
+  createAircraftModel,
+  createGroundUnitModel,
+  createOrdnanceModel,
+  wreckGroundUnitModel,
+} from '../art';
 import { AIRCRAFT, AIRCRAFT_IDS } from '../data/aircraft';
-import type { AircraftId, AircraftModel, AircraftVisualState, HardpointKind, Team } from '../core/types';
+import type {
+  AircraftId,
+  AircraftModel,
+  AircraftVisualState,
+  GroundTargetKind,
+  HardpointKind,
+  Team,
+} from '../core/types';
 import { ATMOSPHERE_GLSL, atmoUniforms, patchAtmosphere } from '../render/atmosphere';
 import { createHarness } from './common';
 
@@ -31,6 +44,7 @@ import { createHarness } from './common';
  *   ?view=flight&id=kestrel                         in flight, afterburner lit, surfaces deflected
  *   ?view=ordnance                                  every store type
  *   ?view=lod&id=kestrel                            LOD0 (left) vs LOD1 (right)
+ *   ?view=ground&desert=0|1&wreck=0|1               every ground target type
  * Optional: team=blue|red, livery=0..2, gear=0..1, canopy=0..1, time=seconds, dmg=0..1
  */
 const params = new URLSearchParams(location.search);
@@ -308,6 +322,34 @@ if (view === 'lineup') {
   camera.fov = 45;
   camera.updateProjectionMatrix();
   shadowBox(6, new Vector3());
+}
+
+if (view === 'ground') {
+  const desert = params.get('desert') === '1';
+  const wreck = params.get('wreck') === '1';
+  const place: [GroundTargetKind, number, number, number][] = [
+    ['sam', -12, -30, 0.5],
+    ['aaa', 0, -32, 0.3],
+    ['radar', 11, -30, -0.4],
+    ['bunker', -22, -8, 0.2],
+    ['command', 2, -6, 0],
+    ['fuel', 34, -2, 0],
+    ['hangar', -48, 10, 0.3],
+    ['ship', 30, 95, 1.1],
+  ];
+  for (const [k, x, z, yaw] of place) {
+    const o = createGroundUnitModel(k, desert);
+    o.position.set(x, 0, z);
+    o.rotation.y = yaw;
+    if (wreck) wreckGroundUnitModel(o);
+    scene.add(o);
+  }
+  ground(0);
+  camera.position.set(-18, 34, -88);
+  camera.lookAt(4, 0, 8);
+  camera.fov = 48;
+  camera.updateProjectionMatrix();
+  shadowBox(90, new Vector3(0, 0, 20));
 }
 
 for (const id of AIRCRAFT_IDS) if (!stats[id] && view === 'lineup') stats[id] = artStats(id);

@@ -12,6 +12,7 @@ import { MeshBuilder } from './builder';
 import { designFor } from './designs';
 import { createFxMaterial, createGlassMaterial } from './effects';
 import { createLiveryMaterial, disposeLiveryMaterial, liveryFor } from './livery';
+import { disposeGroundCache } from './ground';
 import { buildOrdnance } from './ordnance';
 
 /**
@@ -24,6 +25,7 @@ const ordnanceGeo = new Map<HardpointKind, BufferGeometry>();
 let glass: MeshPhysicalMaterial | null = null;
 let fx: ShaderMaterial | null = null;
 let ordnanceMat: MeshPhysicalMaterial | null = null;
+let wreckMat: MeshPhysicalMaterial | null = null;
 
 export function getAirframe(id: AircraftId): AirframeData {
   let a = airframes.get(id);
@@ -83,6 +85,12 @@ export function getOrdnanceMaterial(): Material {
   return ordnanceMat;
 }
 
+/** Scorched variant of the shared airframe program for destroyed ground units. */
+export function getWreckMaterial(): Material {
+  wreckMat ??= createLiveryMaterial(null, 'blue', 0, 0.55);
+  return wreckMat;
+}
+
 export function makeOrdnanceMesh(kind: HardpointKind): Mesh {
   const m = new Mesh(getOrdnanceGeometry(kind), getOrdnanceMaterial());
   m.name = `ordnance-${kind}`;
@@ -109,5 +117,8 @@ export function disposeArtCache(): void {
   fx = null;
   if (ordnanceMat) disposeLiveryMaterial(ordnanceMat);
   ordnanceMat = null;
+  if (wreckMat) disposeLiveryMaterial(wreckMat);
+  wreckMat = null;
+  disposeGroundCache();
   disposeAtlas();
 }

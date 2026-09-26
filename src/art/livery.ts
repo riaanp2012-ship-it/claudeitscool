@@ -120,9 +120,9 @@ export const LIVERIES: Record<Team, readonly Livery[]> = {
     {
       name: 'Rust Digital',
       camo: 3,
-      a: 0x4e4742,
-      b: 0x5d3229,
-      c: 0x3b4046,
+      a: 0x4a4541,
+      b: 0x3a3e43,
+      c: 0x553a31,
       under: 0x6e7072,
       accent: 0x741717,
       stencil: 0x1c1c1c,
@@ -193,6 +193,7 @@ uniform vec4 uArtGun;
 uniform vec4 uArtRegion;
 uniform vec4 uArtRegion2;
 uniform vec4 uArtGlyph;
+uniform float uArtWreck;
 varying vec3 vArtPos;
 varying vec3 vArtNrm;
 varying vec2 vArtUv;
@@ -512,9 +513,12 @@ artSoot = max( artSoot, uArtGun.w * smoothstep( 1.6, 0.0, gv.z ) * step( -0.05, 
 artSoot *= ( 0.55 + 0.45 * artNoise( vec3( artP.x * 14.0, artP.y * 14.0, artP.z * 1.5 ) ) ) * ( 0.4 + artWear );
 if ( artMode < 8.5 ) artCol = mix( artCol, vec3( 0.03, 0.028, 0.026 ), clamp( artSoot, 0.0, 1.0 ) * 0.85 );
 // battle damage: scorching spreads with the part's damage
-float artDmg = vArtState.x;
+float artDmg = max( vArtState.x, uArtWreck );
+// wrecks: a soot film over what paint survives, and large burn patches (structures are big)
+float artIsWreck = step( 0.01, uArtWreck );
+artCol *= 1.0 - 0.5 * artIsWreck;
 if ( artDmg > 0.001 ) {
-  float nb = artFbm( artP * 1.6 + 3.1 );
+  float nb = artFbm( artP * mix( 1.6, 0.28, artIsWreck ) + 3.1 );
   float t = 1.08 - artDmg;
   float burn = smoothstep( t - 0.07, t + 0.07, nb + artDmg * 0.3 );
   artCol = mix( artCol, vec3( 0.022, 0.02, 0.018 ), burn * 0.93 );
@@ -591,6 +595,7 @@ export function createLiveryMaterial(
   setup: LiverySetup | null,
   team: Team,
   liveryIndex: number,
+  wreck = 0,
 ): MeshPhysicalMaterial {
   const lv = liveryFor(team, liveryIndex);
   const decals = setup ? setup.decals.filter((d) => !d.team || d.team === team) : [];
@@ -626,6 +631,7 @@ export function createLiveryMaterial(
     },
     uArtRegion2: { value: new Vector4(setup?.antiGlare[3] ?? 0, 0, 0, 0) },
     uArtGlyph: { value: new Vector4(...glyphGrid()) },
+    uArtWreck: { value: wreck },
   };
   const mat = new MeshPhysicalMaterial({
     color: 0xffffff,
