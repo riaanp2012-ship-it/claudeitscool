@@ -88,6 +88,7 @@ async function render(s: Scenario): Promise<Rendered> {
     dynamics: s.dynamics ?? false,
     rng: new Rng(seedOf(s.name)),
     lookahead: 0,
+    hrtf: !new URLSearchParams(window.location.search).has('nohrtf'),
     volumes: { master: 1, music: 1, effects: 1, radio: 1, ui: 1 },
   });
   core.setListener(origin, identity, still);

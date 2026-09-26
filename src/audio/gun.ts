@@ -63,7 +63,7 @@ class Burst {
       this.spatial = null;
     } else {
       this.loop.connect(this.gate);
-      this.spatial = new SpatialChain(ctx, mixer.exterior, mixer.reverbSend, GUN_PROFILE);
+      this.spatial = new SpatialChain(ctx, mixer.exterior, mixer.reverbSend, GUN_PROFILE, true, host.hrtf);
       s.extras.push(this.spatial);
       this.gate.connect(level).connect(this.spatial.input);
       this.out = this.spatial.input;

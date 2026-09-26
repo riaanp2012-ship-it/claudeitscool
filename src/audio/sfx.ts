@@ -124,6 +124,7 @@ export class SfxPlayer {
         host.mixer.reverbSend,
         profile,
         dist < HRTF_NEAR,
+        host.hrtf,
       );
       set.extras.push(spatial);
       gate.connect(spatial.input);

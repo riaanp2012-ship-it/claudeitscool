@@ -64,7 +64,7 @@ class EngineGraph {
       this.igate = s.gain(0);
       this.igate.connect(mixer.interior);
     } else {
-      this.spatial = new SpatialChain(ctx, mixer.exterior, mixer.reverbSend, ENGINE_PROFILE);
+      this.spatial = new SpatialChain(ctx, mixer.exterior, mixer.reverbSend, ENGINE_PROFILE, true, host.hrtf);
       s.extras.push(this.spatial);
       this.gate.connect(this.spatial.input);
       this.igate = null;

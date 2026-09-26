@@ -14,6 +14,8 @@ export interface AudioHost {
   readonly rnd: Rng;
   /** Lead time (s) before newly built sounds start, so their first ramp is never already in the past. */
   readonly lookahead: number;
+  /** HRTF panning for nearby sources (equal-power otherwise). */
+  readonly hrtf: boolean;
   /** Disconnects a finished graph once `at` has passed (keeps teardown off the audio-critical path). */
   retire(graph: NodeSet, at: number): void;
 }

@@ -73,13 +73,15 @@ export class SpatialChain {
     reverbIn: AudioNode | null,
     readonly profile: SpatialProfile,
     near = true,
+    /** False forces equal-power panning everywhere (cheaper; also a low-CPU option). */
+    private readonly allowHrtf = true,
   ) {
     this.input = new GainNode(ctx, { gain: 1 });
     this.air = new BiquadFilterNode(ctx, { type: 'lowpass', frequency: 20000, Q: 0.6 });
     this.dist = new GainNode(ctx, { gain: 0 });
-    this.hrtf = near;
+    this.hrtf = near && allowHrtf;
     this.panner = new PannerNode(ctx, {
-      panningModel: near ? 'HRTF' : 'equalpower',
+      panningModel: this.hrtf ? 'HRTF' : 'equalpower',
       distanceModel: 'inverse',
       refDistance: 1,
       rolloffFactor: 0,
@@ -148,7 +150,7 @@ export class SpatialChain {
     if (this.hrtf && d > HRTF_FAR) {
       this.hrtf = false;
       this.panner.panningModel = 'equalpower';
-    } else if (!this.hrtf && d < HRTF_NEAR) {
+    } else if (!this.hrtf && this.allowHrtf && d < HRTF_NEAR) {
       this.hrtf = true;
       this.panner.panningModel = 'HRTF';
     }
