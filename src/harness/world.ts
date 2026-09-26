@@ -27,6 +27,9 @@ const VIEWS: Record<string, Record<string, View>> = {
     horizon: { pos: [0, 9000, 14000], look: [0, 6500, -20000] },
     islands: { pos: [-9000, 700, -1500], look: [3000, 150, 7000] },
     lowvalley: { pos: [6500, 70, -8200], look: [6200, 60, -5200], agl: true, lookAgl: true },
+    apron: { pos: [-6150, 190, -8350], look: [-6750, 92, -8800] },
+    town: { pos: [6750, 140, -3700], look: [6150, 10, -4600] },
+    lighthouse: { pos: [900, 190, -1700], look: [470, 90, -2330] },
   },
   mesa: {
     canyon: { pos: [0, 60, 0], look: [0, 60, -1000], agl: true, lookAgl: true },
@@ -146,6 +149,27 @@ async function main(): Promise<void> {
       if (hide.some((n) => o.name.startsWith(n))) o.visible = false;
     });
   }
+  if (params.get('envint')) {
+    const v = Number(params.get('envint'));
+    world.root.traverse((o) => {
+      const m = (o as { material?: { envMapIntensity?: number } }).material;
+      if (o.name.startsWith('structures') && m && m.envMapIntensity !== undefined) m.envMapIntensity = v;
+    });
+  }
+  let envBad = -1;
+  if (params.get('envcheck')) {
+    const rt = world.envTarget;
+    {
+      const buf = new Uint16Array(rt.width * rt.height * 4);
+      h.renderer.readRenderTargetPixels(rt, 0, 0, rt.width, rt.height, buf);
+      envBad = 0;
+      for (let i = 0; i < buf.length; i++) {
+        const v = buf[i]!;
+        if ((v & 0x7c00) === 0x7c00) envBad += 1000000;
+        else if (v & 0x8000 && (v & 0x7fff) > 0x0400) envBad++;
+      }
+    }
+  }
   const probes = (params.get('probe') ?? '')
     .split(';')
     .filter((v) => v.length > 0)
@@ -153,7 +177,7 @@ async function main(): Promise<void> {
       const [x, z] = v.split(',').map(Number);
       return { x, z, h: Number(world.heightAt(x ?? 0, z ?? 0).toFixed(1)) };
     });
-  h.scene.environment = world.environment;
+  h.scene.environment = params.get('env') === '0' ? null : world.environment;
   placeCamera(world);
   const heightNs = measureHeightAt(world);
   const flat = runwayFlatness(world);
@@ -235,6 +259,7 @@ async function main(): Promise<void> {
       minSpawnClearance: Math.round(minSpawnClearance),
       groundTargets: world.groundTargets.length,
       probes,
+      envBad,
     };
     window.__HARNESS_INFO__ = info;
     label.textContent = `${map} / ${viewName}  calls ${info.drawCalls}  tris ${info.triangles}  update ${info.updateMsAvg} ms  gen ${info.generationMs} ms`;

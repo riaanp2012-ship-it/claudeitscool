@@ -132,6 +132,7 @@ void main() {
   vec3 ray = vWorld - cameraPosition;
   col = atmoApply(col, ray);
   a *= 1.0 - smoothstep(uFarFade.x, uFarFade.y, length(ray));
+  if (any(isnan(col)) || any(isinf(col)) || isnan(a)) discard;
   gl_FragColor = vec4(col * a, a);
   #include <tonemapping_fragment>
   #include <colorspace_fragment>
