@@ -278,7 +278,7 @@ export function markings(ctx: BuildContext, a: MarkingAnchors): void {
       depth: 0.25,
     });
   }
-  decalPair(ctx, 'side', a.nose, 0.3, 0.16, { type: 2, stencil: true, color: [1, 1, 1, 0.9], depth: 0.5 });
+  decalPair(ctx, 'side', a.nose, 0.19, 0.1, { type: 2, stencil: true, color: [1, 1, 1, 0.9], depth: 0.5 });
   decalPair(ctx, 'side', a.rescue, 0.26, 0.13, { atlas: 'rescue', depth: 0.5 });
   if (a.danger) decalPair(ctx, 'side', a.danger, 0.22, 0.11, { atlas: 'danger', depth: 0.5 });
   decalPair(ctx, 'top', a.noStep, 0.26, 0.09, {

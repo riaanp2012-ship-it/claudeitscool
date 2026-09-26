@@ -52,7 +52,7 @@ const sunDir = atmoUniforms.uSunDir.value.clone();
 const sun = new DirectionalLight(new Color(1, 0.95, 0.88), 3.6);
 sun.position.copy(sunDir).multiplyScalar(200);
 sun.castShadow = true;
-sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.mapSize.set(1024, 1024);
 sun.shadow.bias = -0.0004;
 sun.shadow.normalBias = 0.02;
 scene.add(sun, sun.target);
@@ -285,9 +285,9 @@ if (view === 'lineup') {
     rudder: 0.25,
     flaps: 0,
   });
-  m.root.rotation.set(0.12, 0.25, -0.5, 'YXZ');
-  camera.position.set(-0.75 * L, 3000 + 0.3 * L, 1.05 * L);
-  camera.lookAt(0, 3000 - 0.05 * L, -0.1 * L);
+  m.root.rotation.set(0.14, 0.1, -0.3, 'YXZ');
+  camera.position.set(0.85 * L, 3000 + 0.16 * L, 1.0 * L);
+  camera.lookAt(0, 3000 + 0.02 * L, -0.05 * L);
   camera.fov = 45;
   camera.updateProjectionMatrix();
   shadowBox(L, new Vector3(0, 3000, 0));

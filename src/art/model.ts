@@ -226,8 +226,8 @@ export class ArtAircraftModel implements AircraftModel {
         case 9: // elevator
           angle = -s.elevator * max;
           break;
-        case 10: // rudder
-          angle = (side === 0 ? 1 : side) * s.rudder * max;
+        case 10: // rudder (twin rudders may splay outward as a speed brake)
+          angle = (side === 0 ? 1 : side) * s.rudder * max + this.params[i]! * s.airbrake * max * 0.8;
           break;
         case 11: // airbrake
           angle = s.airbrake * max * this.params[i]!;

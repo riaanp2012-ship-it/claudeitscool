@@ -302,9 +302,9 @@ vec3 artCamo( vec3 p, vec3 n, float pw ) {
   float kind = uArtCamo.x;
   vec3 col = uArtColA;
   if ( kind < 0.5 ) {
-    float f1 = artFbm( q * 3.1 + vec3( 0.0, 3.0, 0.0 ) );
-    float f2 = artFbm( q * 3.1 + vec3( 11.3, 0.0, 5.2 ) );
-    float w = pw / L * uArtCamo.y * 7.0 + 0.012;
+    float f1 = artFbm( q * 4.6 + vec3( 0.0, 3.0, 0.0 ) );
+    float f2 = artFbm( q * 4.6 + vec3( 11.3, 0.0, 5.2 ) );
+    float w = pw / L * uArtCamo.y * 10.0 + 0.012;
     float m1 = smoothstep( 0.52 - w, 0.52 + w, f1 );
     float m2 = smoothstep( 0.56 - w, 0.56 + w, f2 ) * ( 1.0 - m1 );
     col = mix( col, uArtColB, m1 );
@@ -432,10 +432,15 @@ if ( artMode < 0.5 ) {
   artCoat = uArtPaint.y;
   // radome and anti-glare panel
   if ( artP.z < uArtRegion.x ) artCol *= 0.93;
-  if ( artP.z > uArtRegion.y && artP.z < uArtRegion.z && abs( artP.x ) < uArtRegion.w && artP.y > uArtRegion2.x && artN.y > 0.25 ) {
-    artCol = vec3( 0.035, 0.037, 0.04 );
-    artCoat = 0.0;
-    artRough = 0.8;
+  // anti-glare panel ahead of the windscreen: tapers toward the nose, soft edges, matte
+  if ( uArtRegion.z > uArtRegion.y ) {
+    float agU = clamp( ( artP.z - uArtRegion.y ) / ( uArtRegion.z - uArtRegion.y ), 0.0, 1.0 );
+    float agW = uArtRegion.w * ( 0.35 + 0.65 * agU );
+    float agE = min( min( artP.z - uArtRegion.y, uArtRegion.z - artP.z ), agW - abs( artP.x ) );
+    float ag = smoothstep( 0.0, 0.012 + artPw, agE ) * step( uArtRegion2.x, artP.y ) * smoothstep( 0.2, 0.45, artN.y );
+    artCol = mix( artCol, vec3( 0.045, 0.048, 0.052 ), ag * 0.88 );
+    artCoat *= 1.0 - ag;
+    artRough = mix( artRough, 0.78, ag );
   }
   vec3 pl = artPanel > 1.5 && artPanel < 2.5 ? artPanelsWing( vArtUv, max( vArtAux.x, 0.1 ), artFw )
     : artPanel > 0.5 && artPanel < 1.5 ? artPanelsBody( vArtUv, artFw ) : vec3( 0.0 );
@@ -447,9 +452,9 @@ if ( artMode < 0.5 ) {
   artCol *= 1.0 - pl.y * 0.28;
   // leading-edge paint wear on wings
   if ( artPanel > 1.5 && artPanel < 2.5 ) {
-    float le = 1.0 - smoothstep( 0.0, 0.06, vArtUv.x );
-    float chip = smoothstep( 0.45, 0.75, artNoise( artP * 22.0 ) ) * le * artWear;
-    artCol = mix( artCol, vec3( 0.46, 0.47, 0.48 ), chip * 0.7 );
+    float le = 1.0 - smoothstep( 0.0, 0.035, vArtUv.x );
+    float chip = smoothstep( 0.58, 0.82, artNoise( artP * 26.0 ) ) * smoothstep( 0.3, 0.6, artNoise( artP * 3.0 ) ) * le * artWear;
+    artCol = mix( artCol, vec3( 0.42, 0.43, 0.44 ), chip * 0.6 );
     artRough = mix( artRough, 0.32, chip );
     artMetal = chip * 0.6;
   }
@@ -462,8 +467,9 @@ if ( artMode < 0.5 ) {
 } else if ( artMode < 1.5 ) {
   artRough = 0.72;
 } else if ( artMode < 2.5 ) {
-  artMetal = 0.8;
-  artRough = 0.38 + artGrime * 0.2;
+  artMetal = 0.75;
+  artRough = 0.5 + artGrime * 0.2;
+  artCol *= 0.85 + 0.3 * artNoise( vec3( artP.x * 9.0, artP.y * 9.0, artP.z * 2.0 ) );
 } else if ( artMode < 3.5 ) {
   artRough = 0.82;
 } else if ( artMode < 4.5 ) {
@@ -479,8 +485,8 @@ if ( artMode < 0.5 ) {
   artMetal = 0.3;
   artCoat = 1.0;
 } else if ( artMode < 8.5 ) {
-  artMetal = 0.7;
-  artRough = 0.5;
+  artMetal = 0.6;
+  artRough = 0.62;
   float deep = 1.0 - artAo;
   float heat = smoothstep( 0.35, 1.0, vArtState.y ) * 0.5 + vArtState.z * 3.2;
   artEmit = heat * ( 0.25 + deep * 1.2 ) * vec3( 1.0, 0.34, 0.08 );

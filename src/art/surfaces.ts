@@ -25,6 +25,8 @@ export interface ControlDef {
   max: number;
   /** Split into upper/lower halves that open as a speed brake (Mule decelerons). */
   split?: boolean;
+  /** Also deflects outward as a speed brake (split rudders). */
+  brake?: boolean;
 }
 
 export interface SurfaceDef {
@@ -355,7 +357,7 @@ export function buildSurface(b: MeshBuilder, rig: Rig, def: SurfaceDef, lod: 0 |
     const axis = normalize([tmpB[0] - tmpA[0], tmpB[1] - tmpA[1], tmpB[2] - tmpA[2]]);
     const roles = c.split ? (['decelU', 'decelL'] as const) : ([c.role] as const);
     for (const role of roles) {
-      const reg = { role, parent, pivot: [...tmpA] as Vec3, axis, max: c.max * DEG };
+      const reg = { role, parent, pivot: [...tmpA] as Vec3, axis, max: c.max * DEG, param: c.brake ? 1 : 0 };
       controlBones.push(def.mirror ? rig.addPair(reg)[0] : rig.add(reg));
     }
   }
