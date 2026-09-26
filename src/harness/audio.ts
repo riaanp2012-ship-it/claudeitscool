@@ -11,7 +11,6 @@ import type { CockpitTones, EngineParams, SfxId } from '../core/types';
 
 const SR = 48000;
 const QUANTUM = 128;
-const FRAME = 1 / 60;
 
 interface Check {
   label: string;
@@ -23,7 +22,8 @@ interface Harness {
   core: AudioCore;
   ctx: OfflineAudioContext;
   at(t: number, fn: () => void): void;
-  frame(fn: (t: number, dt: number) => void): void;
+  /** Drives the scenario at `fps` (default 60, like the game); each tick then calls core.update. */
+  frame(fn: (t: number, dt: number) => void, fps?: number): void;
 }
 
 interface Scenario {
@@ -60,6 +60,8 @@ interface Result {
   updateAvgMs: number;
   updateMaxMs: number;
   updateP95Ms: number;
+  /** Frames whose update() took over 1 ms, as [frame index, ms]. */
+  slowFrames: [number, number][];
 }
 
 const origin = new Vector3();
@@ -101,7 +103,16 @@ async function render(s: Scenario): Promise<Rendered> {
     else events.set(q, [fn]);
   };
   let frameFn: ((t: number, dt: number) => void) | null = null;
-  s.setup({ core, ctx, at, frame: (fn) => (frameFn = fn) });
+  let frameRate = 60;
+  s.setup({
+    core,
+    ctx,
+    at,
+    frame: (fn, fps = 60) => {
+      frameFn = fn;
+      frameRate = fps;
+    },
+  });
 
   // A frame loop (60 Hz) that drives the scenario and then core.update, timing update() like the game would.
   const updateMs: number[] = [];
@@ -114,9 +125,12 @@ async function render(s: Scenario): Promise<Rendered> {
     core.update(dt);
     updateMs.push(performance.now() - t0);
   };
-  for (let t = 0; t < s.duration - 0.005; t += FRAME) {
-    const q = Math.round((t * SR) / QUANTUM);
-    at(t, () => tick((q * QUANTUM) / SR));
+  // Scenarios without a frame loop render with no suspends at all (static listener, nothing to drive).
+  if (frameFn) {
+    for (let t = 0; t < s.duration - 0.005; t += 1 / frameRate) {
+      const q = Math.round((t * SR) / QUANTUM);
+      at(t, () => tick((q * QUANTUM) / SR));
+    }
   }
   const q0 = events.get(0);
   if (q0) for (const fn of q0) fn();
@@ -350,6 +364,7 @@ function analyze(s: Scenario, r: Rendered): Result {
     spec,
     updateAvgMs: r.updateMs.length ? upd / r.updateMs.length : 0,
     updateMaxMs: updMax,
+    slowFrames: r.updateMs.flatMap((u, i): [number, number][] => (u > 1 ? [[i, Number(u.toFixed(1))]] : [])),
     updateP95Ms: r.updateMs.length
       ? r.updateMs.slice().sort((a, b) => a - b)[Math.floor(r.updateMs.length * 0.95)]!
       : 0,
@@ -389,7 +404,6 @@ const sfx = (id: SfxId, duration: number, position?: Vector3, minActiveDb?: numb
   minActiveDb,
   setup(h) {
     h.core.play(id, position ? { position } : undefined);
-    h.frame(() => undefined);
   },
 });
 
@@ -435,7 +449,6 @@ const SCENARIOS: Scenario[] = [
     duration: 0.5,
     setup(h) {
       h.core.radio();
-      h.frame(() => undefined);
     },
   },
   {
@@ -592,7 +605,7 @@ const SCENARIOS: Scenario[] = [
     setup(h) {
       h.core.setMenuMusic(true);
       h.at(14.5, () => h.core.setMenuMusic(false));
-      h.frame(() => undefined);
+      h.frame(() => undefined, 10);
     },
   },
   {
@@ -640,7 +653,6 @@ const SCENARIOS: Scenario[] = [
           h.core.play(i % 3 === 0 ? 'explosionSmall' : 'explosionLarge', { position: pos, volume: 2 }),
         );
       }
-      h.frame(() => undefined);
     },
     checks() {
       return [];
@@ -660,7 +672,6 @@ const SCENARIOS: Scenario[] = [
       g.gain.linearRampToValueAtTime(0, 1.02);
       o.start(0);
       o.stop(1.1);
-      h.frame(() => undefined);
     },
     checks(r) {
       const out = windowRms(r.left, 0.5, 0.9);
@@ -813,6 +824,47 @@ function drawCell(g: CanvasRenderingContext2D, r: Result, x: number, y: number, 
   }
 }
 
+/** Kept for the page's lifetime so Chrome keeps the HRTF database loaded between scenarios. */
+let hrtfKeeper: OfflineAudioContext | null = null;
+
+/**
+ * Loads the HRTF database with a plain render before any suspend-driven render runs: in Chrome a database
+ * load racing a suspended offline render can stall it.
+ */
+async function primeHrtf(): Promise<number> {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const ctx = new OfflineAudioContext({ numberOfChannels: 2, length: SR / 10, sampleRate: SR });
+    const p = new PannerNode(ctx, { panningModel: 'HRTF' });
+    const o = new OscillatorNode(ctx);
+    const g = new GainNode(ctx, { gain: 0 });
+    o.connect(g).connect(p).connect(ctx.destination);
+    o.start();
+    if (await withWatchdog(ctx.startRendering(), 4000)) {
+      hrtfKeeper = new OfflineAudioContext({ numberOfChannels: 2, length: SR / 10, sampleRate: SR });
+      new PannerNode(hrtfKeeper, { panningModel: 'HRTF' }).connect(hrtfKeeper.destination);
+      return attempt;
+    }
+  }
+  return 0;
+}
+
+/** Resolves to null if the render has not finished within `ms` (reported as a failure, never a hang). */
+function withWatchdog<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => resolve(null), ms);
+    p.then(
+      (v) => {
+        window.clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        window.clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
+
 async function main(): Promise<void> {
   document.body.style.margin = '0';
   document.body.style.background = '#0a0c0d';
@@ -830,10 +882,13 @@ async function main(): Promise<void> {
   g.font = '600 14px monospace';
   g.fillText('SPLASH ONE audio: rendering offline...', 12, 22);
 
+  const primeAttempts = await primeHrtf();
   const t0 = performance.now();
   const results: Result[] = [];
   const timings: number[] = [];
   const dumped: number[] = [];
+  const stalled: string[] = [];
+  const retried: string[] = [];
   const only = new URLSearchParams(window.location.search).get('only');
   const keys = only ? only.split(',') : null;
   const list = keys ? SCENARIOS.filter((s) => keys.some((k) => s.name.includes(k))) : SCENARIOS;
@@ -841,7 +896,17 @@ async function main(): Promise<void> {
     const s = list[i]!;
     document.title = `audio ${i + 1}/${list.length}: ${s.name}`;
     const ts = performance.now();
-    const rendered = await render(s);
+    // A stalled offline render is an environment fault, not a property of the sound: renders are seeded and
+    // deterministic, so retry once and record it; a second stall is reported as a failure.
+    let rendered = await withWatchdog(render(s), 20000);
+    if (!rendered) {
+      retried.push(s.name);
+      rendered = await withWatchdog(render(s), 20000);
+    }
+    if (!rendered) {
+      stalled.push(s.name);
+      continue;
+    }
     const dump = new URLSearchParams(window.location.search).get('dump');
     if (dump && i === 0) {
       const [a = 0, b = 0] = dump.split(',').map(Number);
@@ -864,11 +929,12 @@ async function main(): Promise<void> {
   g.fillStyle = '#0a0c0d';
   g.fillRect(0, 0, W, H);
   const passed = results.filter((r) => r.pass).length;
+  const total = results.length + stalled.length;
   const battle = results.find((r) => r.name.startsWith('battle'));
-  g.fillStyle = passed === results.length ? '#e9e5d9' : '#ff6a1a';
+  g.fillStyle = passed === total ? '#e9e5d9' : '#ff6a1a';
   g.font = '600 14px monospace';
   g.fillText(
-    `SPLASH ONE audio: ${passed}/${results.length} pass  |  rendered offline in ${(renderMs / 1000).toFixed(1)} s  |  ` +
+    `SPLASH ONE audio: ${passed}/${total} pass${stalled.length ? ` (${stalled.length} stalled)` : ''}  |  rendered offline in ${(renderMs / 1000).toFixed(1)} s  |  ` +
       `update() avg ${battle ? battle.updateAvgMs.toFixed(3) : '-'} ms, p95 ${battle ? battle.updateP95Ms.toFixed(2) : '-'} ms, max ${battle ? battle.updateMaxMs.toFixed(2) : '-'} ms (12 AI + player)`,
     12,
     18,
@@ -886,13 +952,17 @@ async function main(): Promise<void> {
 
   window.__HARNESS_INFO__ = {
     passed,
-    total: results.length,
+    total,
     renderMs: Math.round(renderMs),
     timings,
     dump: dumped,
+    stalled,
+    retried,
+    primeAttempts,
     updateAvgMs: battle ? Number(battle.updateAvgMs.toFixed(4)) : null,
     updateMaxMs: battle ? Number(battle.updateMaxMs.toFixed(3)) : null,
     updateP95Ms: battle ? Number(battle.updateP95Ms.toFixed(3)) : null,
+    updateSlowFrames: battle ? battle.slowFrames : null,
     results: results.map((r) => ({
       name: r.name,
       pass: r.pass,
