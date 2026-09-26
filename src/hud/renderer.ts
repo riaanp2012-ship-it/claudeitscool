@@ -1,7 +1,7 @@
 import type { Hud, HudState, HudWarning } from '../core/types';
 import { drawDamage, drawMissileArrows, drawRadar, drawRwr, RADAR_RADIUS, RWR_RADIUS } from './awareness';
 import { HudStrings } from './caches';
-import { drawContacts } from './contacts';
+import { createContactLabels, drawContacts } from './contacts';
 import { createCluster, type Cluster, type DrawContext } from './context';
 import {
   drawAltitudeTape,
@@ -72,6 +72,7 @@ export class HudRenderer implements Hud {
       rungs: createRungBuffer(40),
       drum: { prefix: 0, roll: 0, carry: 0 },
       v2: { x: 0, y: 0 },
+      labels: createContactLabels(),
       warnings: WARNING_PRIORITY.slice() as HudWarning[],
       feedIdx: new Int32Array(8),
       subtitleSource: '',
