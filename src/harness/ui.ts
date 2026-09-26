@@ -442,6 +442,7 @@ async function run(): Promise<void> {
         onInstantAction: noop,
         onFreeFlight: noop,
         onTraining: noop,
+        onSurvival: noop,
         onHangar: noop,
         onSettings: noop,
         onCredits: noop,
@@ -579,12 +580,16 @@ function audit(): { offscreen: string[]; scrolled: string[]; clipped: string[] }
     if (e.closest('svg') && e.tagName.toLowerCase() !== 'svg') continue;
     const r = e.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
-    if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) offscreen.push(name(e));
+    // Content inside a UI scroll container may extend past the fold by design (it scrolls).
+    const inScroller = e.parentElement?.closest('.s1-scroll') !== null;
+    const out = r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1;
+    if (out && !inScroller) offscreen.push(name(e));
     if (e instanceof HTMLElement) {
       const cs = getComputedStyle(e);
       if (cs.overflowY !== 'visible' && e.scrollHeight > e.clientHeight + 1) scrolled.push(name(e));
       const leaf = e.children.length === 0 && Boolean(e.textContent) && cs.display !== 'inline';
-      if (leaf && e.scrollWidth > e.clientWidth + 1) clipped.push(name(e));
+      const control = e.matches('.s1-seg, .s1-select, .s1-step, .s1-foot__actions, .s1-hints, .s1-tabs');
+      if ((leaf || control) && e.scrollWidth > e.clientWidth + 1) clipped.push(name(e));
     }
   }
   return { offscreen: offscreen.slice(0, 8), scrolled: scrolled.slice(0, 8), clipped: clipped.slice(0, 8) };

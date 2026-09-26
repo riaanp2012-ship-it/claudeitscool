@@ -11,6 +11,8 @@ export const MIN_LAYOUT_HEIGHT = 600;
 export const MAX_FRAME_ASPECT = 16 / 9;
 /** Below this layout height the UI switches to its compact vertical rhythm. */
 export const COMPACT_HEIGHT = 820;
+/** Below this layout height (small windows, 960x540 and similar) the UI uses its tightest rhythm. */
+export const SHORT_HEIGHT = 700;
 /** Below this layout width grids tighten their gutters. */
 export const NARROW_WIDTH = 1360;
 
@@ -24,6 +26,7 @@ export interface UiLayout {
   frameWidth: number;
   frameLeft: number;
   compact: boolean;
+  short: boolean;
   narrow: boolean;
 }
 
@@ -49,6 +52,7 @@ export function computeLayout(viewportWidth: number, viewportHeight: number, uiS
     frameWidth,
     frameLeft: (width - frameWidth) / 2,
     compact: height < COMPACT_HEIGHT,
+    short: height < SHORT_HEIGHT,
     narrow: frameWidth < NARROW_WIDTH,
   };
 }

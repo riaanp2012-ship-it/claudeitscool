@@ -74,8 +74,19 @@ export abstract class Screen {
   handle(action: NavAction): boolean {
     const top = this.layers[this.layers.length - 1];
     if (top) return top.nav.handle(action);
+    // Screens whose only focus targets are the footer buttons let up/down read long content instead.
+    if ((action === 'up' || action === 'down') && this.readTarget && this.nav.shape().length <= 1) {
+      const t = this.readTarget;
+      if (t.scrollHeight > t.clientHeight) {
+        t.scrollTop += action === 'down' ? 64 : -64;
+        return true;
+      }
+    }
     return this.nav.handle(action);
   }
+
+  /** Scrollable read-only content that up/down scroll when there is nothing else to move between. */
+  protected readTarget: HTMLElement | null = null;
 
   /** "Press any key" screens override this; return true when the input was used. */
   anyInput(): boolean {

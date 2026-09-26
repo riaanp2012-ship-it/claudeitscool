@@ -114,6 +114,15 @@
   height: 40px;
 }
 
+[data-narrow] .s1-btn {
+  min-width: 96px;
+  padding: 0 var(--space-4);
+}
+
+[data-narrow] .s1-btn--primary {
+  min-width: 144px;
+}
+
 /* ─── Main menu items ──────────────────────────────────────────────────────────── */
 
 .s1-menu {
@@ -319,6 +328,7 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--muted);
+  background: var(--fill-900);
   white-space: nowrap;
 }
 
@@ -619,6 +629,19 @@
   transition: none;
 }
 
+.s1-slider__track:active .s1-slider__thumb {
+  transform: scaleY(1.25);
+}
+
+.s1-slider.is-disabled .s1-slider__track {
+  cursor: not-allowed;
+}
+
+.s1-slider.is-disabled .s1-slider__fill,
+.s1-slider.is-disabled .s1-slider__thumb {
+  background: var(--dim);
+}
+
 .s1-slider__val {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -756,6 +779,10 @@
 .s1-opt:hover,
 .s1-opt.is-sel {
   background: var(--ink-700);
+}
+
+.s1-opt:active {
+  background: var(--fill-sel);
 }
 
 .s1-opt.is-on .s1-opt__name::after {

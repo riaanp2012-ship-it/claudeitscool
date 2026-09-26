@@ -111,7 +111,11 @@ export class HangarScreen extends Screen {
     this.metaEl = txt('span', 's1-code', '');
     this.frame.append(
       header({ code: `FLEET // ${aircraft.length} AIRFRAMES`, title: 'Hangar', meta: [this.metaEl] }),
-      el('div', 's1-body', [el('div', 's1-hangar__col s1-scroll', [list]), this.loadout, side]),
+      el('div', 's1-body s1-hangar__body', [
+        el('div', 's1-hangar__col s1-scroll', [list]),
+        this.loadout,
+        side,
+      ]),
     );
 
     const back = backButton(onBack);
@@ -231,9 +235,7 @@ export class HangarScreen extends Screen {
 
     const stations = def?.hardpoints ?? [];
     this.loadout.replaceChildren(
-      el('div', 's1-section-title', [
-        txt('span', 's1-code', `Loadout // ${stations.length} stations \u00b7 default stores`),
-      ]),
+      el('div', 's1-section-title', [txt('span', 's1-code', `Loadout // ${stations.length} stations`)]),
       el(
         'ol',
         's1-hangar__stations',

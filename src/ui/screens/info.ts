@@ -117,6 +117,7 @@ export class BriefingScreen extends Screen {
     const back = backButton(onBack);
     const begin = actionButton('Begin sortie', onBegin, { primary: true, chevron: true });
     this.frame.appendChild(footer([HINT.select, HINT.confirm, HINT.back], [back.el, begin.el]));
+    this.readTarget = left;
     this.nav.setRows([{ items: [back.item, begin.item] }], begin.el);
   }
 }

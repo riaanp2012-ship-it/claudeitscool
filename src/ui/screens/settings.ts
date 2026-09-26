@@ -24,10 +24,10 @@ export class SettingsScreen extends Screen {
   private readonly tabItems: NavItem[] = [];
   private readonly fieldsEl: HTMLElement;
   private readonly help: HTMLElement;
-  private readonly bindings: HTMLElement;
   private readonly footerRow: NavRow;
   private readonly reset: Control;
   private controls: { field: SettingsField; control: Control }[] = [];
+  private bindingItems: NavItem[] = [];
   private bar: SelectionBar;
 
   constructor(ctx: UiContext, onBack: () => void, initial: SettingsSection = 'graphics') {
@@ -57,14 +57,13 @@ export class SettingsScreen extends Screen {
     this.bar = new SelectionBar(this.fieldsEl);
     this.help = el('div', 's1-settings__help s1-panel s1-brackets');
     this.help.setAttribute('aria-live', 'polite');
-    this.bindings = el('div', 's1-settings__bindings s1-panel');
 
     this.frame.append(
       header({ code: 'CONFIG // SAVED IN THIS BROWSER', title: 'Settings' }),
       el('div', 's1-body s1-settings__body', [
         stagger(el('div', 's1-settings__tabs'), 1),
         stagger(el('div', 's1-settings__main s1-scroll', [this.fieldsEl]), 2),
-        stagger(el('div', 's1-settings__side s1-scroll', [this.help, this.bindings]), 3),
+        stagger(el('div', 's1-settings__side s1-scroll', [this.help]), 3),
       ]),
     );
     this.frame.querySelector('.s1-settings__tabs')!.appendChild(tabRow);
@@ -107,12 +106,11 @@ export class SettingsScreen extends Screen {
     const rows: NavRow[] = [
       { items: this.tabItems },
       ...this.controls.map((c) => ({ items: [c.control.item], bar: this.bar })),
+      ...this.bindingItems.map((item) => ({ items: [item], bar: this.bar })),
       this.footerRow,
     ];
     const target = initial || focusFields || !wasOnTabs ? this.controls[0]?.control.el : this.tabs.get(id);
     this.nav.setRows(rows, target);
-    this.bindings.hidden = id !== 'controls';
-    if (id === 'controls') this.renderBindings();
   }
 
   private buildFields(): void {
@@ -122,7 +120,24 @@ export class SettingsScreen extends Screen {
       control.item.onFocus = () => this.describe(field, i);
       return { field, control };
     });
-    this.fieldsEl.replaceChildren(this.bar.el, ...this.controls.map((c) => c.control.el));
+    this.bindingItems = this.section === 'controls' ? this.bindingRows() : [];
+    this.fieldsEl.replaceChildren(
+      this.bar.el,
+      ...this.controls.map((c) => c.control.el),
+      ...(this.bindingItems.length
+        ? [
+            el('div', 's1-section-title s1-bind__title', [
+              txt('span', 's1-code', 'Default bindings // read only'),
+            ]),
+            el('div', 's1-bindrow s1-bindrow--head', [
+              txt('span', '', 'Action'),
+              txt('span', '', 'Keyboard / mouse'),
+              txt('span', '', 'Gamepad'),
+            ]),
+          ]
+        : []),
+      ...this.bindingItems.map((i) => i.el),
+    );
     this.bar.hide();
   }
 
@@ -176,26 +191,39 @@ export class SettingsScreen extends Screen {
     this.ctx.toast(`${label} settings restored to their defaults.`, 'success');
   }
 
-  private renderBindings(): void {
-    this.bindings.replaceChildren(
-      el('div', 's1-section-title', [txt('span', 's1-code', 'Default bindings // read only')]),
-      el('table', 's1-bind', [
-        el('thead', '', [
-          el('tr', '', [
-            txt('th', '', 'Action'),
-            txt('th', '', 'Keyboard / mouse'),
-            txt('th', '', 'Gamepad'),
-          ]),
-        ]),
-        el(
-          'tbody',
-          '',
-          DEFAULT_BINDINGS.map((b) =>
-            el('tr', '', [txt('td', '', b.action), txt('td', '', b.keyboard), txt('td', '', b.gamepad)]),
+  /** Default bindings as read-only rows: keyboard and gamepad users can move through and read them. */
+  private bindingRows(): NavItem[] {
+    return DEFAULT_BINDINGS.map((b, i) => {
+      const row = el('div', 's1-bindrow', [
+        txt('span', 's1-bindrow__action', b.action),
+        txt('span', 's1-bindrow__key', b.keyboard),
+        txt('span', 's1-bindrow__key', b.gamepad),
+      ]);
+      row.tabIndex = -1;
+      row.setAttribute('role', 'row');
+      stagger(row, FIELDS.controls.length + i);
+      return {
+        el: row,
+        confirmSound: null,
+        onFocus: () =>
+          this.help.replaceChildren(
+            txt('div', 's1-code', `Bindings // ${pad(i + 1)}`),
+            txt('h2', 's1-settings__help-title s1-display', b.action),
+            dataList(
+              [
+                ['Keyboard / mouse', [b.keyboard]],
+                ['Gamepad', [b.gamepad]],
+              ],
+              's1-dl--text',
+            ),
+            txt(
+              'p',
+              's1-small',
+              'Default binding. Keys are matched by position, so they work on any keyboard layout.',
+            ),
           ),
-        ),
-      ]),
-    );
+      };
+    });
   }
 }
 

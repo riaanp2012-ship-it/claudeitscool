@@ -385,7 +385,8 @@
   line-height: 24px;
 }
 
-[data-compact] .s1-setup__desc {
+[data-compact] .s1-setup__desc,
+[data-compact] .s1-setup__jetstats {
   display: none;
 }
 
@@ -456,6 +457,7 @@
 
 .s1-hangar__col {
   grid-column: 1 / span 3;
+  grid-row: 1;
   align-self: start;
   max-height: 100%;
 }
@@ -478,6 +480,7 @@
 
 .s1-hangar__panel {
   grid-column: 9 / -1;
+  grid-row: 1;
   align-self: start;
   max-height: 100%;
   overflow-y: auto;
@@ -492,9 +495,10 @@
 
 .s1-hangar__id {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
 }
 
 .s1-hangar__name {
@@ -512,6 +516,7 @@
 
 .s1-hangar__loadout {
   grid-column: 4 / span 5;
+  grid-row: 1;
   align-self: end;
   display: grid;
   gap: var(--space-1);
@@ -586,13 +591,36 @@
   line-height: 20px;
 }
 
+[data-narrow] .s1-hangar__body {
+  grid-template-rows: minmax(0, 1fr) auto;
+  row-gap: var(--space-4);
+}
+
 [data-narrow] .s1-hangar__col {
-  grid-column: 1 / span 4;
+  grid-column: 1 / span 5;
+  grid-row: 1;
 }
 
 [data-narrow] .s1-hangar__loadout {
-  grid-column: 5 / span 3;
+  grid-column: 1 / span 5;
+  grid-row: 2;
   padding: 0;
+}
+
+[data-narrow] .s1-hangar__panel {
+  grid-row: 1 / span 2;
+}
+
+[data-narrow] .s1-hangar__stations {
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+}
+
+[data-compact] .s1-hangar__row .s1-row__sub {
+  display: none;
+}
+
+[data-compact] .s1-hangar__panel .s1-section-title {
+  margin-top: var(--space-1);
 }
 
 [data-narrow] .s1-hangar__panel {
@@ -658,10 +686,6 @@
   border-top: 1px solid var(--line);
 }
 
-.s1-settings__bindings[hidden] {
-  display: none;
-}
-
 .s1-bind {
   width: 100%;
   border-collapse: collapse;
@@ -693,6 +717,55 @@
   color: var(--muted);
 }
 
+.s1-bind__title {
+  margin: var(--space-6) 0 var(--space-2);
+}
+
+.s1-bindrow {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 3fr);
+  column-gap: var(--space-4);
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-4);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.s1-bindrow--head {
+  min-height: 24px;
+  font-family: var(--font-label);
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 16px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom-color: var(--line);
+}
+
+.s1-bindrow__action {
+  color: var(--muted);
+}
+
+.s1-bindrow__key {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--bone);
+}
+
+.s1-bindrow:hover,
+.s1-bindrow.is-sel {
+  background: linear-gradient(90deg, var(--fill-sel), transparent 98%);
+}
+
+.s1-bindrow.is-sel .s1-bindrow__action,
+.s1-bindrow:hover .s1-bindrow__action {
+  color: var(--bone);
+}
+
 [data-compact] .s1-settings__tabs {
   margin-bottom: var(--space-2);
 }
@@ -718,7 +791,11 @@
 }
 
 [data-narrow] .s1-settings__main {
-  grid-column: 1 / span 7;
+  grid-column: 1 / span 8;
+}
+
+[data-narrow] .s1-settings__side {
+  grid-column: 9 / -1;
 }
 
 [data-narrow] .s1-field {
@@ -1314,4 +1391,115 @@
 
 [data-narrow] .s1-fatal__box {
   grid-column: 1 / span 8;
+}
+
+/* ─── Short windows (layout height under 700 px, for example 960x540) ──────────── */
+
+.s1-screen--menu .s1-frame {
+  grid-template-rows: auto minmax(min-content, 1fr) auto;
+}
+
+[data-short] .s1-frame {
+  padding: var(--space-6) var(--space-8) var(--space-4);
+}
+
+[data-short] .s1-head {
+  padding-bottom: var(--space-2);
+}
+
+[data-short] .s1-head__code {
+  margin-bottom: var(--space-1);
+}
+
+[data-short] .s1-body {
+  padding: var(--space-3) 0;
+}
+
+[data-short] .s1-foot {
+  padding-top: var(--space-3);
+  min-height: calc(36px + var(--space-3));
+}
+
+[data-short] .s1-btn {
+  height: 36px;
+}
+
+[data-short] .s1-tab {
+  height: 36px;
+}
+
+[data-short] .s1-mm__hints,
+[data-short] .s1-mm__pilot > .s1-code:first-child {
+  display: none;
+}
+
+[data-short] .s1-mm__callsign {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+[data-short] .s1-mm__rank {
+  margin-bottom: 0;
+}
+
+[data-short] .s1-mm__brand {
+  gap: var(--space-2);
+}
+
+[data-short] .s1-title__logo,
+[data-short] .s1-title__rule {
+  max-width: 440px;
+}
+
+[data-short] .s1-title__rule {
+  margin-top: var(--space-8);
+}
+
+[data-short] .s1-pause__title,
+[data-short] .s1-loading__title,
+[data-short] .s1-debrief__title,
+[data-short] .s1-hangar__name {
+  font-size: 28px;
+  line-height: 32px;
+}
+
+[data-short] .s1-debrief__gain {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+[data-short] .s1-debrief__medal {
+  padding: var(--space-2) 0;
+}
+
+[data-short] .s1-debrief__pilot,
+[data-short] .s1-debrief__head {
+  gap: var(--space-2);
+}
+
+[data-short] .s1-progress {
+  margin-top: var(--space-3);
+}
+
+[data-short] .s1-dl > dt,
+[data-short] .s1-dl > dd {
+  min-height: 24px;
+}
+
+[data-short] .s1-setup__help,
+[data-short] .s1-settings__help-text {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+[data-short] .s1-hangar__id .s1-tag {
+  display: none;
+}
+
+[data-short] .s1-setup__side {
+  gap: var(--space-3);
+}
+
+[data-short] .s1-setup__block + .s1-setup__block {
+  padding-top: var(--space-3);
 }

@@ -152,6 +152,10 @@
   column-gap: var(--space-4);
 }
 
+[data-narrow] .s1-hints {
+  column-gap: var(--space-4);
+}
+
 /* Left-weighted scrim: keeps the menu column readable while the scene stays the hero. */
 .s1-scrim {
   position: absolute;

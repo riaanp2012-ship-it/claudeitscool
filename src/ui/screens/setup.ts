@@ -164,12 +164,15 @@ abstract class SetupScreen extends Screen {
       txt('div', 's1-code', `AIRCRAFT // ${d.code}`),
       txt('h2', 's1-setup__jet s1-display', d.name),
       txt('p', 's1-small', a.role),
-      dataList([
-        ['Top speed', [formatMach(a.stats.topSpeedMach)]],
-        ['Thrust / weight', [formatFixed(a.stats.thrustToWeight, 2)]],
-        ['G limit', unit(`+${formatFixed(a.stats.gLimit, 1)}`, 'G')],
-        ['Gun', [a.stats.gun]],
-      ]),
+      dataList(
+        [
+          ['Top speed', [formatMach(a.stats.topSpeedMach)]],
+          ['Thrust / weight', [formatFixed(a.stats.thrustToWeight, 2)]],
+          ['G limit', unit(`+${formatFixed(a.stats.gLimit, 1)}`, 'G')],
+          ['Gun', [a.stats.gun]],
+        ],
+        's1-setup__jetstats',
+      ),
     );
   }
 
