@@ -290,7 +290,7 @@ function build(ctx: BuildContext): void {
     angle: 90,
     mirror: true,
     strutR: 0.085,
-    doors: [{ z0: 12.1, z1: 14.05, t0: 0.455, t1: 0.545, angle: 95, profile: nacelle }],
+    doors: [{ z0: 12.3, z1: 14.05, t0: 0.47, t1: 0.53, angle: 70, profile: nacelle }],
   });
   airbrakePanel(ctx, fuselage, { z0: 7.2, z1: 8.8, t0: 0.955, t1: 1.045, dir: -1, max: 45 });
   blade(ctx, 0, 0.68, 10.0, 0.22, 0.32, false);
