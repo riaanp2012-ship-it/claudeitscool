@@ -1,4 +1,10 @@
-import { createAircraftModel, createOrdnanceModel, isAircraftAvailable } from './art';
+import {
+  createAircraftModel,
+  createGroundUnitModel,
+  createOrdnanceModel,
+  isAircraftAvailable,
+  wreckGroundUnitModel,
+} from './art';
 import { createAudio } from './audio';
 import { createFx } from './fx';
 import { Game } from './game';
@@ -18,6 +24,8 @@ const game = new Game(app, {
   createAircraftModel,
   createOrdnanceModel,
   isAircraftAvailable,
+  createGroundUnitModel,
+  wreckGroundUnitModel,
   createFx,
   createAudio,
   createHud,

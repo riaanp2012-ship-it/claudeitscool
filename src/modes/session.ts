@@ -4,7 +4,6 @@ import { Aircraft, type LoadoutRule } from '../aircraft/aircraft';
 import { CameraRig } from '../camera/rig';
 import type { KillEvent, Targetable } from '../combat/targetable';
 import { GroundTarget } from '../combat/groundTarget';
-import { createGroundModel, wreckGroundModel } from '../combat/groundModels';
 import { selectTarget } from '../combat/targeting';
 import { FixedStep } from '../core/loop';
 import { clamp, clamp01 } from '../core/math';
@@ -42,6 +41,10 @@ export interface SessionServices {
   input: Input;
   models: AircraftModelFactory;
   ordnance: OrdnanceModelFactory;
+  /** Ground-unit model (front -Z, origin at the ground contact point); `desert` selects sand paint. */
+  groundModel(kind: GroundTargetKind, desert: boolean): Object3D;
+  /** Turns a ground-unit model into its wreck. Safe to call twice. */
+  wreckGroundModel(model: Object3D): void;
 }
 
 export interface SpawnSpec {
@@ -211,7 +214,7 @@ export class Session {
         services.fx.explosion(g.position, 'air-large');
         services.fx.flash(g.position, EXPLOSION_FLASH, 20, 600, 0.6);
         services.audio.play('explosionGround', { position: g.position, volume: 1 });
-        if (g.model) wreckGroundModel(g.model);
+        if (g.model) services.wreckGroundModel(g.model);
         this.burning.push({
           position: g.position.clone(),
           trail: services.fx.trail('damage-smoke'),
@@ -302,7 +305,7 @@ export class Session {
   ): GroundTarget {
     const g = new GroundTarget(kind, team, position, heading, group, rng.nextU32());
     if (label) g.label = label;
-    const model = createGroundModel(kind, this.world.map === 'mesa');
+    const model = this.services.groundModel(kind, this.world.map === 'mesa');
     model.position.copy(position);
     model.rotation.y = -heading;
     this.scene.add(model);

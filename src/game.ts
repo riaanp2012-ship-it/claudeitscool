@@ -1,4 +1,4 @@
-import { PerspectiveCamera, Scene, Vector3 } from 'three';
+import { PerspectiveCamera, Scene, Vector3, type Object3D } from 'three';
 import { profile, type Medal } from './core/profile';
 import { rng, timeSeed } from './core/rng';
 import { settings, type Settings } from './core/settings';
@@ -10,6 +10,7 @@ import type {
   DebriefData,
   FreeFlightOptions,
   Fx,
+  GroundTargetKind,
   Hud,
   InstantActionOptions,
   LessonSummary,
@@ -45,6 +46,8 @@ export interface GameModules {
   createAircraftModel: AircraftModelFactory;
   createOrdnanceModel: OrdnanceModelFactory;
   isAircraftAvailable?(id: AircraftId): boolean;
+  createGroundUnitModel(kind: GroundTargetKind, desert: boolean): Object3D;
+  wreckGroundUnitModel(model: Object3D): void;
   createFx(): Fx;
   createAudio(): AudioSystem;
   createHud(): Hud;
@@ -479,6 +482,8 @@ export class Game {
         input: this.input,
         models: this.modules.createAircraftModel,
         ordnance: this.modules.createOrdnanceModel,
+        groundModel: this.modules.createGroundUnitModel,
+        wreckGroundModel: this.modules.wreckGroundUnitModel,
       },
       rules,
       { aircraft: req.options.aircraft, seed, unlimitedFuel: req.kind !== 'instant' },
@@ -487,14 +492,7 @@ export class Game {
     this.resize();
     // Warm up every shader so the first explosion or missile never hitches (ZD-C02).
     this.ui.setLoadingProgress(0.92, 'Compiling shaders');
-    const renderer = this.pipeline.renderer;
-    // compileAsync warns when KHR_parallel_shader_compile is missing (software GL, some browsers);
-    // the synchronous compile does the same warm-up without the warning.
-    if (renderer.extensions.has('KHR_parallel_shader_compile')) {
-      await renderer.compileAsync(session.scene, session.camera).catch(() => undefined);
-    } else {
-      renderer.compile(session.scene, session.camera);
-    }
+    await this.pipeline.warmup(session.scene, session.camera);
     await this.fx.warmup(this.pipeline.renderer, session.camera).catch(() => undefined);
     this.ui.setLoadingProgress(1, 'Ready');
     session.update(0);
@@ -784,6 +782,11 @@ export class Game {
         textures: this.pipeline.renderer.info.memory.textures,
       }),
       resetPerf: () => this.stats.reset(),
+      /** Names of every linked shader program; a name appearing mid-game means a missed warm-up (ZD-C02). */
+      programs: () =>
+        (this.pipeline.renderer.info.programs ?? []).map(
+          (prog) => `${prog.id} ${prog.name || prog.cacheKey.slice(0, 48)}`,
+        ),
       start: (kind: 'instant' | 'free', opts: Record<string, string>) =>
         this.autostart(kind, new URLSearchParams(opts)),
       menu: () => {

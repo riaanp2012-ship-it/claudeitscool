@@ -599,12 +599,18 @@ export class FxSystem implements Fx {
     this.fillWarmup();
     // Compile against the root's own light set, then render it once into a tiny target so the programs,
     // attribute buffers and textures are all uploaded before the first explosion (ZD-C02). ShaderMaterials
-    // with lights: false keep this program when later drawn in the full scene.
-    if (renderer.extensions.has('KHR_parallel_shader_compile'))
-      await renderer.compileAsync(this.root, camera);
-    else renderer.compile(this.root, camera);
+    // with lights: false keep this program when later drawn in the full scene. The target is bound before
+    // compiling because three picks the linear-output program for render targets and the sRGB one for the
+    // canvas; the game always draws into the composer's linear buffer.
     const rt = new WebGLRenderTarget(4, 4, { type: HalfFloatType });
     const previous = renderer.getRenderTarget();
+    renderer.setRenderTarget(rt);
+    let pending: Promise<unknown> | null = null;
+    if (renderer.extensions.has('KHR_parallel_shader_compile'))
+      pending = renderer.compileAsync(this.root, camera);
+    else renderer.compile(this.root, camera);
+    renderer.setRenderTarget(previous);
+    if (pending) await pending;
     renderer.setRenderTarget(rt);
     renderer.render(this.root, camera);
     renderer.setRenderTarget(previous);

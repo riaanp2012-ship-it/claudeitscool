@@ -5,6 +5,7 @@ type Api = {
   menu(): void;
   autopilot(): Promise<void>;
   perf(): { geometries: number; textures: number };
+  programs(): string[];
 };
 
 test.describe.configure({ timeout: 900_000 });
@@ -27,11 +28,17 @@ test('instant action runs, then menu → mission → menu five times without lea
 }) => {
   await page.goto('/?autostart=instant&map=kessel&aircraft=kestrel&enemies=3&allies=1');
   await waitForGame(page);
+  const programs = () =>
+    page.evaluate(() => (window as unknown as { __SPLASH__: Api }).__SPLASH__.programs());
+  const warmed = await programs();
   await page.evaluate(() => (window as unknown as { __SPLASH__: Api }).__SPLASH__.autopilot());
   await page.waitForTimeout(20_000);
   const s = await splashState(page);
   expect(['game', 'debrief']).toContain(s.state);
   await page.screenshot({ path: 'artifacts/screens/e2e-instant.png' });
+  // Loading warms every shader, so nothing may compile mid-fight (ZD-C02: no first-use hitches).
+  const compiledLate = (await programs()).filter((name) => !warmed.includes(name));
+  expect(compiledLate, 'shader programs compiled after loading').toEqual([]);
 
   const counts: { geometries: number; textures: number }[] = [];
   for (let i = 0; i < 5; i++) {

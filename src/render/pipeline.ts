@@ -126,6 +126,29 @@ export class Pipeline {
     this.composer.render(dt);
   }
 
+  /**
+   * Compiles every material in `scene` for the composer's linear HDR buffer, which is where the scene is
+   * drawn. three picks a different program for the sRGB canvas, so compiling without this target warms up
+   * variants the game never uses, and anything off screen at load (distant LODs, pooled missiles,
+   * vegetation) would then compile on first sight mid-game (ZD-C02).
+   */
+  async warmup(scene: Scene, camera: Camera): Promise<void> {
+    const r = this.renderer;
+    const previous = r.getRenderTarget();
+    r.setRenderTarget(this.composer.inputBuffer);
+    let pending: Promise<unknown> | null = null;
+    try {
+      // compileAsync warns without KHR_parallel_shader_compile (software GL, some browsers); the
+      // synchronous compile does the same work silently. Both choose programs before returning, so the
+      // target can be restored before waiting for the driver.
+      if (r.extensions.has('KHR_parallel_shader_compile')) pending = r.compileAsync(scene, camera);
+      else r.compile(scene, camera);
+    } finally {
+      r.setRenderTarget(previous);
+    }
+    if (pending) await pending.catch(() => undefined);
+  }
+
   private applyOptions(): void {
     this.bloom.blendMode.opacity.value = this.options.bloom ? 1 : 0;
     this.aaPass.enabled = this.options.smaa;
