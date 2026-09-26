@@ -35,7 +35,7 @@ import { createHarness } from './common';
  * must line up with the rendered horizon (conformal check).
  *
  * Query: ?scenario=cruise|dogfight|lock|missile|pullup|cockpit|ground|training|metric-amber|
- *        debrief-message|ultrawide  &color=green|amber|white  &scale=0.8..1.4  &cb=off|protan|deutan|tritan
+ *        debrief-message|ultrawide|furball  &color=green|amber|white  &scale=0.8..1.4  &cb=off|protan|deutan|tritan
  *        &units=imperial|metric  &backdrop=day|snow  &lock=0..1  &anim=1  &bench=1 (HUD timing only)
  */
 
@@ -586,6 +586,115 @@ const SCENARIOS: Record<string, Scenario> = {
     subtitle: { speaker: 'LANCER 2', text: 'Splash one. Good kill.', age: 0.8 },
     score: { left: 'BLUE  5', right: '3  RED', timer: '9:58' },
   },
+};
+// A furball: several bandits and friendlies packed within a few degrees (label decluttering check).
+SCENARIOS.furball = {
+  ...SCENARIOS.dogfight!,
+  contacts: [
+    {
+      id: 80,
+      az: 2.8,
+      el: 7.4,
+      dist: 640,
+      closure: 38,
+      team: 'red',
+      label: 'BORZOI',
+      kind: 'aircraft',
+      selected: true,
+      lock: 0.4,
+      health: 0.55,
+      inRange: true,
+      heading: 40,
+    },
+    {
+      id: 81,
+      az: 4.6,
+      el: 8.2,
+      dist: 900,
+      closure: 20,
+      team: 'red',
+      label: 'BORZOI',
+      kind: 'aircraft',
+      heading: 60,
+    },
+    {
+      id: 82,
+      az: 1.2,
+      el: 5.9,
+      dist: 1150,
+      closure: -12,
+      team: 'red',
+      label: 'WYVERN',
+      kind: 'aircraft',
+      heading: 10,
+    },
+    {
+      id: 83,
+      az: 5.9,
+      el: 5.1,
+      dist: 1800,
+      closure: 44,
+      team: 'red',
+      label: 'WYVERN',
+      kind: 'aircraft',
+      heading: 90,
+    },
+    {
+      id: 84,
+      az: 3.4,
+      el: 10.1,
+      dist: 2300,
+      closure: 5,
+      team: 'red',
+      label: 'HARROW',
+      kind: 'aircraft',
+      heading: 120,
+    },
+    {
+      id: 85,
+      az: -0.8,
+      el: 8.8,
+      dist: 2700,
+      closure: -30,
+      team: 'red',
+      label: 'BORZOI',
+      kind: 'aircraft',
+      heading: 0,
+    },
+    {
+      id: 86,
+      az: 6.8,
+      el: 9.0,
+      dist: 1500,
+      closure: 15,
+      team: 'blue',
+      label: 'LANCER 2',
+      kind: 'aircraft',
+      heading: 30,
+    },
+    {
+      id: 87,
+      az: 0.2,
+      el: 4.4,
+      dist: 2100,
+      closure: 8,
+      team: 'blue',
+      label: 'LANCER 4',
+      kind: 'aircraft',
+      heading: 45,
+    },
+    {
+      id: 88,
+      az: -40,
+      el: 2,
+      dist: 3900,
+      closure: 20,
+      team: 'red',
+      label: 'NIGHTJAR',
+      kind: 'aircraft',
+      heading: 80,
+    },
+  ],
 };
 SCENARIOS.ultrawide = { ...SCENARIOS.dogfight!, score: { left: 'BLUE  4', right: '3  RED', timer: '8:42' } };
 

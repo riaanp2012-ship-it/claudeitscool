@@ -1,5 +1,6 @@
 import type { HudState, HudWarning } from '../core/types';
 import type { HudStrings } from './caches';
+import type { ContactLabels } from './contacts';
 import type { Vec2Out } from './edge';
 import type { DrumSplit } from './format';
 import type { HudLayout } from './layout';
@@ -72,6 +73,8 @@ export interface DrawContext {
   rungs: RungBuffer;
   drum: DrumSplit;
   v2: Vec2Out;
+  /** Contact label placement (decluttering), rebuilt every frame into fixed buffers. */
+  labels: ContactLabels;
   warnings: HudWarning[];
   /** Kill feed indices sorted youngest last. */
   feedIdx: Int32Array;

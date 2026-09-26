@@ -1,5 +1,15 @@
 import type { HudContact, Team } from '../core/types';
 import type { DrawContext } from './context';
+import {
+  ORDER_INFO,
+  addBox,
+  candidateSpot,
+  createBoxList,
+  placeLabel,
+  sortIndices,
+  type BoxList,
+  type LabelSpot,
+} from './declutter';
 import { ellipseEdge } from './edge';
 import { closureIn, distanceIn, distanceUnitLabel, rangeKey, speedUnitLabel } from './format';
 
@@ -7,7 +17,47 @@ import { closureIn, distanceIn, distanceUnitLabel, rangeKey, speedUnitLabel } fr
  * Contact symbology. Shape carries identity (never color alone, spec §8.2): friendlies are circles,
  * hostiles are diamonds, checkpoints are rings. The selected target gets corner brackets, callsign,
  * range, closure, health and the lock ring that closes into a heavy lock diamond.
+ *
+ * Decluttering: the selected target's info block and every on-screen symbol are reserved first; then
+ * the other contacts are labeled nearest-first. The FULL_LABELS nearest get "CALLSIGN range", the rest
+ * range only, each placed below/above/right/left of its symbol at the first spot that collides with
+ * nothing. A label that fits nowhere is dropped (the symbol still carries identity).
  */
+
+/** Non-selected contacts (nearest first) that get a callsign in addition to the range. */
+export const FULL_LABELS = 2;
+/** Contacts considered for labels; beyond this only symbols are drawn. */
+export const MAX_LABELED = 64;
+
+export interface ContactLabels {
+  boxes: BoxList;
+  keys: Float32Array;
+  order: Int32Array;
+  /** Per contact index: -1 no label, 0 range only, 1 callsign + range. */
+  tier: Int8Array;
+  lx: Float32Array;
+  ly: Float32Array;
+  spot: LabelSpot;
+  /** Selected target: index (-1 none) and the top-left corner of its callsign/range/closure block. */
+  sel: number;
+  infoX: number;
+  infoY: number;
+}
+
+export function createContactLabels(): ContactLabels {
+  return {
+    boxes: createBoxList(MAX_LABELED * 2 + 8),
+    keys: new Float32Array(MAX_LABELED),
+    order: new Int32Array(MAX_LABELED),
+    tier: new Int8Array(MAX_LABELED),
+    lx: new Float32Array(MAX_LABELED),
+    ly: new Float32Array(MAX_LABELED),
+    spot: { x: 0, y: 0 },
+    sel: -1,
+    infoX: 0,
+    infoY: 0,
+  };
+}
 
 const TAU = Math.PI * 2;
 /** The player's side. HudContact.team is absolute, so friend/foe is relative to this. */
@@ -95,26 +145,150 @@ function drawGroupSymbols(dc: DrawContext, g: number): number {
   return count;
 }
 
-/** Range readouts under the non-selected symbols of a group. */
-function drawGroupRanges(dc: DrawContext, g: number): void {
-  const { p, L, f, s } = dc;
-  const cs = dc.state.contacts;
+/** Half-size of a contact's symbol footprint, device px (surface targets include their base line). */
+function symbolRadius(dc: DrawContext, c: HudContact): number {
+  const S = dc.L.S;
+  if (c.kind === 'checkpoint') return checkpointRadius(dc, c);
+  if (c.kind === 'ground' || c.kind === 'ship') return 14 * S;
+  const g = groupOf(c);
+  return (g === GROUP_FRIEND ? (c.selected ? 10 : 8) : c.selected ? 11 : 9) * S;
+}
+
+function rangeText(dc: DrawContext, c: HudContact): string {
+  return dc.s.range.get(rangeKey(distanceIn(fin(c.distance), dc.state.units)));
+}
+
+/** Geometry shared by layout and drawing of the selected target block, device px. */
+function selectedHalf(dc: DrawContext, c: HudContact): number {
+  return groupOf(c) === GROUP_CHECKPOINT ? checkpointRadius(dc, c) + 6 * dc.L.S : Math.round(20 * dc.L.S);
+}
+
+function selectedClear(dc: DrawContext, c: HudContact): number {
+  const lock = Math.min(1, Math.max(0, fin(c.lock)));
+  const half = selectedHalf(dc, c);
+  return lock > 0 && lock < 1 ? Math.max(half, 34 * dc.L.S) : half;
+}
+
+/** Selected target text block: callsign, range and closure lines (layout units). */
+const INFO_H = 52;
+const INFO_LINE_1 = 9;
+const INFO_LINE_2 = 27;
+const INFO_LINE_3 = 43;
+
+/** Width of the selected target's range/closure block, device px. */
+function infoWidth(dc: DrawContext, c: HudContact): number {
+  const { p, f, s } = dc;
   const units = dc.state.units;
+  const adv = p.measure('0', f.monoS);
+  const range = rangeText(dc, c).length * adv + 4 * dc.L.S + p.measure(distanceUnitLabel(units), f.labelS);
+  const cl = s.signed.get(Math.round(closureIn(fin(c.closure), units))).length * adv;
+  return Math.max(range, cl + 4 * dc.L.S + p.measure(speedUnitLabel(units), f.labelS));
+}
+
+/**
+ * Places the selected target's callsign/range/closure block at the first spot free of other symbols;
+ * if none is free it keeps the default spot (the selected target always shows its data).
+ */
+function placeSelected(dc: DrawContext, c: HudContact, x: number, y: number): void {
+  const { p, L, f } = dc;
+  const lab = dc.labels;
+  const S = L.S;
+  const half = selectedHalf(dc, c);
+  const clear = selectedClear(dc, c);
+  // Health bar and cue under the brackets are fixed.
+  addBox(lab.boxes, x - 26 * S, y + half + 4 * S, x + 26 * S, y + half + 32 * S);
+  // One block beside the brackets (right, else left, below, above) so the callsign can never be read
+  // as belonging to a neighbouring contact.
+  const iw = Math.max(infoWidth(dc, c), p.measure(c.label, f.labelM));
+  const ih = INFO_H * S;
+  if (placeLabel(lab.boxes, x, y, clear, iw, ih, 8 * S, 0, 0, L.W, L.H, lab.spot, ORDER_INFO) < 0) {
+    candidateSpot(ORDER_INFO[0]!, x, y, clear, iw, ih, 8 * S, lab.spot);
+    addBox(lab.boxes, lab.spot.x, lab.spot.y, lab.spot.x + iw, lab.spot.y + ih);
+  }
+  lab.infoX = lab.spot.x;
+  lab.infoY = lab.spot.y;
+}
+
+/** Decides which contacts get which label and where, before anything is drawn. */
+function layoutLabels(dc: DrawContext): void {
+  const { p, L, f } = dc;
+  const cs = dc.state.contacts;
+  const lab = dc.labels;
   const S = L.S;
   const dpr = L.dpr;
-  p.textStyle(f.monoS, groupColor(dc, g), 'center');
-  for (let i = 0; i < cs.length; i++) {
+  const n = Math.min(cs.length, MAX_LABELED);
+  lab.boxes.count = 0;
+  lab.sel = -1;
+  // Every on-screen symbol is an obstacle (the selected one with its brackets / lock ring).
+  for (let i = 0; i < n; i++) {
     const c = cs[i]!;
-    if (c.selected || !isShown(c) || groupOf(c) !== g) continue;
+    lab.tier[i] = -1;
+    if (!isShown(c)) {
+      lab.keys[i] = Infinity;
+      continue;
+    }
     const x = c.screen.x * dpr;
-    let y = c.screen.y * dpr;
-    y +=
-      g === GROUP_CHECKPOINT
-        ? checkpointRadius(dc, c) + 12 * S
-        : c.kind === 'ground' || c.kind === 'ship'
-          ? 25 * S
-          : 20 * S;
-    p.text(s.range.get(rangeKey(distanceIn(fin(c.distance), units))), x, y);
+    const y = c.screen.y * dpr;
+    const r = c.selected ? selectedClear(dc, c) : symbolRadius(dc, c);
+    addBox(lab.boxes, x - r, y - r, x + r, y + r);
+    if (c.selected && lab.sel < 0) lab.sel = i;
+    lab.keys[i] = c.selected ? Infinity : fin(c.distance, 1e9);
+  }
+  // The selected target's text is placed first, so it wins every contest.
+  if (lab.sel >= 0) {
+    const c = cs[lab.sel]!;
+    placeSelected(dc, c, c.screen.x * dpr, c.screen.y * dpr);
+  }
+  sortIndices(lab.keys, n, lab.order);
+  const h = Math.round(16 * S);
+  const gap = 3 * S;
+  const adv = p.measure('0', f.monoS);
+  let rank = 0;
+  for (let k = 0; k < n; k++) {
+    const i = lab.order[k]!;
+    if (!(lab.keys[i]! < Infinity)) break;
+    const c = cs[i]!;
+    const x = c.screen.x * dpr;
+    const y = c.screen.y * dpr;
+    const r = symbolRadius(dc, c);
+    const rangeW = rangeText(dc, c).length * adv;
+    let placed = -1;
+    if (rank < FULL_LABELS && c.label.length > 0) {
+      const w = p.measure(c.label, f.labelS) + 5 * S + rangeW;
+      placed = placeLabel(lab.boxes, x, y, r, w, h, gap, 0, 0, L.W, L.H, lab.spot);
+      if (placed >= 0) lab.tier[i] = 1;
+    }
+    if (placed < 0) {
+      placed = placeLabel(lab.boxes, x, y, r, rangeW, h, gap, 0, 0, L.W, L.H, lab.spot);
+      if (placed >= 0) lab.tier[i] = 0;
+    }
+    if (placed >= 0) {
+      lab.lx[i] = lab.spot.x;
+      lab.ly[i] = lab.spot.y + h / 2;
+    }
+    rank++;
+  }
+}
+
+/** Labels of one group as placed by layoutLabels: callsigns first, then ranges (two font switches). */
+function drawGroupLabels(dc: DrawContext, g: number): void {
+  const { p, L, f } = dc;
+  const cs = dc.state.contacts;
+  const lab = dc.labels;
+  const n = Math.min(cs.length, MAX_LABELED);
+  const color = groupColor(dc, g);
+  p.textStyle(f.labelS, color, 'left');
+  for (let i = 0; i < n; i++) {
+    if (lab.tier[i] !== 1 || groupOf(cs[i]!) !== g) continue;
+    p.text(cs[i]!.label, lab.lx[i]!, lab.ly[i]!);
+  }
+  p.textStyle(f.monoS, color, 'left');
+  for (let i = 0; i < n; i++) {
+    const t = lab.tier[i]!;
+    if (t < 0 || groupOf(cs[i]!) !== g) continue;
+    const c = cs[i]!;
+    const x = t === 1 ? lab.lx[i]! + p.measure(c.label, f.labelS) + 5 * L.S : lab.lx[i]!;
+    p.text(rangeText(dc, c), x, lab.ly[i]!);
   }
 }
 
@@ -128,7 +302,7 @@ function drawSelected(dc: DrawContext, c: HudContact): void {
   const color = groupColor(dc, g);
   const x = p.snap(c.screen.x * dpr, lw);
   const y = p.snap(c.screen.y * dpr, lw);
-  const half = g === GROUP_CHECKPOINT ? checkpointRadius(dc, c) + 6 * S : Math.round(20 * S);
+  const half = selectedHalf(dc, c);
   const arm = Math.round(7 * S);
 
   const lock = Math.min(1, Math.max(0, fin(c.lock)));
@@ -187,23 +361,23 @@ function drawSelected(dc: DrawContext, c: HudContact): void {
     }
   }
 
-  // Label above, range and closure to the right, cue below.
-  // Text clears both the brackets and the widest lock ring (34 units at the start of a lock).
-  const clear = lock > 0 && lock < 1 ? Math.max(half, 34 * S) : half;
-  const tx = x + clear + 8 * S;
-  p.textStyle(f.labelM, color, 'center');
-  p.text(c.label, x, y - clear - 12 * S);
+  // Callsign and range/closure at the spots chosen by the declutter pass; cue below.
+  const lab = dc.labels;
+  const tx = lab.infoX;
+  p.textStyle(f.labelM, color, 'left');
+  p.text(c.label, tx, lab.infoY + INFO_LINE_1 * S);
   const units = st.units;
+  const r1 = lab.infoY + INFO_LINE_2 * S;
+  const r2 = lab.infoY + INFO_LINE_3 * S;
   p.textStyle(f.monoS, color, 'left');
-  const rangeStr = s.range.get(rangeKey(distanceIn(fin(c.distance), units)));
-  p.text(rangeStr, tx, y - 7 * S);
-  const closure = Math.round(closureIn(fin(c.closure), units));
-  const closureStr = s.signed.get(closure);
-  p.text(closureStr, tx, y + 9 * S);
+  const rangeStr = rangeText(dc, c);
+  p.text(rangeStr, tx, r1);
+  const closureStr = s.signed.get(Math.round(closureIn(fin(c.closure), units)));
+  p.text(closureStr, tx, r2);
   const adv = p.measure('0', f.monoS);
   p.textStyle(f.labelS, pal.dim, 'left');
-  p.text(distanceUnitLabel(units), tx + rangeStr.length * adv + 4 * S, y - 7 * S);
-  p.text(speedUnitLabel(units), tx + closureStr.length * adv + 4 * S, y + 9 * S);
+  p.text(distanceUnitLabel(units), tx + rangeStr.length * adv + 4 * S, r1);
+  p.text(speedUnitLabel(units), tx + closureStr.length * adv + 4 * S, r2);
 
   const cueY = hbY + hbH + 11 * S;
   if (c.inRange) {
@@ -274,14 +448,15 @@ function drawSelectedArrowLabel(dc: DrawContext, c: HudContact): void {
 export function drawContacts(dc: DrawContext): void {
   const cs = dc.state.contacts;
   if (cs.length === 0) return;
+  layoutLabels(dc);
   for (let g = 0; g <= 2; g++) {
-    if (drawGroupSymbols(dc, g) > 0) drawGroupRanges(dc, g);
+    if (drawGroupSymbols(dc, g) > 0) drawGroupLabels(dc, g);
     drawGroupArrows(dc, g);
   }
+  const sel = dc.labels.sel;
+  if (sel >= 0) drawSelected(dc, cs[sel]!);
   for (let i = 0; i < cs.length; i++) {
     const c = cs[i]!;
-    if (!c.selected) continue;
-    if (isShown(c)) drawSelected(dc, c);
-    else drawSelectedArrowLabel(dc, c);
+    if (c.selected && !isShown(c)) drawSelectedArrowLabel(dc, c);
   }
 }
