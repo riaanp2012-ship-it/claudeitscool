@@ -50,7 +50,7 @@ Status: `open` until verified. Method: automated test name, screenshot review, o
 | ZD-B35 | Motion judder of the jet or camera at a steady 60 FPS, caused by missing interpolation or wrong update order. | open | |
 | ZD-B36 | Distant aircraft vanishing: they must stay at least a 2 px dot, as in real life. | open | |
 | ZD-C01 | Below 60 FPS on reference hardware at the default preset. | open | |
-| ZD-C02 | A hitch the first time an effect, material, weapon or map feature is used (shader compile). Warm everything up while loading. | open | |
+| ZD-C02 | A hitch the first time an effect, material, weapon or map feature is used (shader compile). Warm everything up while loading. | verified | e2e `instant action runs…`: no shader program may link after loading (`__SPLASH__.programs()`); `Pipeline.warmup` compiles for the HDR target |
 | ZD-C03 | Hitches while streaming terrain or uploading textures. | open | |
 | ZD-C04 | GC pauses caused by per-frame allocations. | open | |
 | ZD-C05 | Memory leaks across restarts or mode switches: geometries, materials, textures, render targets, audio nodes, listeners, workers, timers. | open | |
