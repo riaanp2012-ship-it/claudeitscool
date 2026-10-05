@@ -5,9 +5,29 @@
   "description": "J.A.R.V.I.S. voice assistant for macOS (Gemini brain, ElevenLabs voice)",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "node server.js",
+    "app": "electron .",
+    "build:mac": "electron-builder --mac --dir && cp -R dist/mac*/JARVIS.app /Applications/ && open /Applications/JARVIS.app"
   },
   "devDependencies": {
-    "electron": "^33.0.0"
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.jarvis.assistant",
+    "productName": "JARVIS",
+    "files": [
+      "main.js",
+      "preload.js",
+      "core.js",
+      "src/**"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "JARVIS listens for your voice commands.",
+        "NSAppleEventsUsageDescription": "JARVIS controls apps on your request."
+      }
+    }
   }
 }

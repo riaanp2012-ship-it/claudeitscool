@@ -6,8 +6,13 @@ A voice-first desktop assistant: always-on listening, ElevenLabs voice, Gemini b
 ```bash
 cd jarvis
 npm install
-npm start
 ```
+Then pick one:
+- **Real Mac app:** `npm run build:mac` builds **JARVIS.app**, copies it into Applications and opens it.
+  After that, launch it from Launchpad/Spotlight like any app (drag it to the Dock to keep it there).
+  Unsigned app: if macOS blocks it, right-click JARVIS in Applications → Open → Open.
+- **Browser:** `npm start` opens **http://localhost:3000** (use Chrome for the mic).
+- **Dev window:** `npm run app`.
 On first launch the Settings panel opens; paste your **ElevenLabs** and **Gemini** API keys (stored only in
 `~/Library/Application Support/jarvis/config.json`). Or copy `.env.example` to `.env` and fill it in.
 

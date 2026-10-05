@@ -1,4 +1,23 @@
 /* global jarvis */
+// Web mode (http://localhost:3000): talk to server.js over fetch instead of Electron IPC.
+if (!window.jarvis) {
+  const listeners = [];
+  const post = (url, data, headers = { 'Content-Type': 'application/json' }) =>
+    fetch(url, { method: 'POST', headers, body: headers['Content-Type'] === 'application/json' ? JSON.stringify(data) : data });
+  window.jarvis = {
+    chat: async (text) => { const r = await (await post('/api/chat', { text })).json(); (r.events || []).forEach((ev) => listeners.forEach((fn) => fn(ev))); return r; },
+    tts: async (text) => {
+      const r = await post('/api/tts', { text });
+      if ((r.headers.get('Content-Type') || '').includes('audio')) return { ok: true, audio: await r.arrayBuffer() };
+      return r.json();
+    },
+    stt: async (audio, mime) => (await post('/api/stt', audio, { 'Content-Type': mime })).json(),
+    getSettings: async () => (await fetch('/api/settings')).json(),
+    setSettings: async (s) => (await post('/api/settings', s)).json(),
+    reset: async () => (await post('/api/reset', {})).json(),
+    onEvent: (fn) => listeners.push(fn),
+  };
+}
 const $ = (id) => document.getElementById(id);
 const orbCanvas = $('orb');
 const ctx = orbCanvas.getContext('2d');
